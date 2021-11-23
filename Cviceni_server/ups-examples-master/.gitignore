@@ -1,0 +1,8 @@
+*.a
+*.class
+*.out
+C/*/server
+C/*/client
+C/statemachine/statemachine
+golang/client
+golang/server
