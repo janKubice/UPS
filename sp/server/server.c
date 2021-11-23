@@ -1,71 +1,57 @@
-#include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <stdio.h>
 #include <sys/un.h>
 #include <unistd.h>
 #include <netinet/in.h>
+#include <unistd.h>
 #include <stdlib.h>
 
 int main(void)
 {
+	int server_sock, client_sock, n;
+	int server_addr_len, client_addr_len;
+	struct sockaddr_in local_addr;
+	struct sockaddr_in remote_addr;
+	char ch='A';
 
-    int server_socket = 0;
-    int client_socket = 0;
-    int return_value = 0;
 
-    char cbuf[51];
-    int len_addr;
-    struct sockaddr_in my_addr, peer_addr;
+	server_sock = socket( AF_INET, SOCK_DGRAM, 0 );
 
-    server_socket = socket(AF_INET, SOCK_STREAM, 0);
+	memset(&local_addr, 0, sizeof(struct sockaddr_in));
 
-    memset(&my_addr, 0, sizeof(struct sockaddr_in));
+	local_addr.sin_family = AF_INET;
+	local_addr.sin_addr.s_addr = inet_addr( "127.0.0.1" );
+	local_addr.sin_port = htons(10000);
 
-    my_addr.sin_family = AF_INET;
-    my_addr.sin_port = htons(10000);
-    my_addr.sin_addr.s_addr = INADDR_ANY;
+	server_addr_len = sizeof( local_addr );
 
-    return_value = bind(server_socket, (struct sockaddr *)&my_addr,
-                        sizeof(struct sockaddr_in));
+	if( bind( server_sock, ( struct sockaddr *)&local_addr, server_addr_len ) != 0 )
+	{
+		printf("Bind ER\n");
+                return -1;
+	} 
+	else {
+		printf("Bind OK\n");
+	}
+	
+	while( 1 )
+	{
+		printf( "Server ceka na data\n" );
+		
+		client_addr_len = sizeof( remote_addr );
+		n = recvfrom(server_sock, &ch, 1, 0, (struct sockaddr*)&remote_addr, &client_addr_len );
+	
+		printf( "Pripojil se klient\n" );
+		printf( "Klient poslal = %c\n", &ch );
 
-    if (return_value == 0)
-        printf("Bind - OK\n");
-    else
-    {
-        printf("Bind - ERR\n");
-        return -1;
-    }
+		ch++;
+		sleep(5);
 
-    listen(server_socket, 5);
+		printf( "Server odesila = %c\n", ch );
+		n = sendto( server_sock, &ch, 1, 0, (struct sockaddr*)&remote_addr, client_addr_len );
 
-    for (;;)
-    {
-        client_socket = accept(server_socket, (struct sockaddr *)&peer_addr, &len_addr);
-        if (client_socket > 0)
-        {
-            return_value = fork();
-            if (return_value == 0)
-            {
-                printf("Hura nove spojeni\n");
-                do
-                {
-                    return_value = recv(client_socket, &cbuf, 50, 0);
-                    printf("Prijato %c\n", cbuf);
-                } while (return_value > 0);
-                close(client_socket);
-                return 0;
-            }
-            else
-            {
-                close(client_socket);
-            }
-        }
-        else
-        {
-            printf("Brutal Fatal ERROR\n");
-            return -1;
-        }
-    }
+		close( client_sock );
 
-    return 0;
+	}
 }
