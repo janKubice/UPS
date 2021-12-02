@@ -180,7 +180,6 @@ class pixel():
         
     def getPos(self):
         """Získá pozici pixelu
-
         Returns:
             tuple: pozice ve formátu (x,y) od horního levého kraje
         """
@@ -226,7 +225,3 @@ class pixel():
         Vrátí list sousedů
         """
         return self.neighbors #Return a list of the neighbours of the current pixel
-
-        
-
-

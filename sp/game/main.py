@@ -7,13 +7,14 @@ from grid import colorPallet
 from grid import pixelArt
 from grid import menu
 from grid import grid
+from client import Client
 import sys
 import time
 
 sys.setrecursionlimit(1000000)
 
 pygame.init()
-paintBrush = pygame.image.load(r"sp\art\Paintbrush.png")
+paintBrush = pygame.image.load("sp/game/art/Paintbrush.png")
 currentVersion = 1.1
 
 #Defaultní hodnoty
@@ -21,6 +22,8 @@ rows = 50
 cols = 50
 wid = 600
 heigh = 600
+
+client = None
 
 checked = []
 def fill(spot, grid, color, c):
@@ -41,66 +44,15 @@ def fill(spot, grid, color, c):
          fill(grid.getGrid()[i][j + 1], grid, color, c)
       if j > 0 : #dolů
          fill(grid.getGrid()[i][j - 1], grid, color, c)
-   
-
-
+       
 
 def changeCaption(txt):
    pygame.display.set_caption(txt)
 
 
-def onsubmit(x=0):
-    global cols, rows, wid, heigh
-    
-    st = rowsCols.get().split(',') 
-    window.quit()
-    window.destroy()
-    try: 
-        if st[0].isdigit(): 
-            cols = int(st[0])
-            while 600//cols != 600/cols:
-               if cols < 300:
-                  cols += 1
-               else:
-                  cols -= 1
-        if st[1].isdigit():
-            rows = int(st[1])
-            while 600//rows != 600/rows:
-               if rows < 300:
-                  rows += 1
-               else:
-                  rows -= 1
-        if cols > 300:
-          cols = 300
-        if rows > 300:
-          rows = 300
-
-    except:
-        pass
-
-
-def updateLabel(a, b, c):
-   sizePixel = rowsCols.get().split(',')
-   l = 12
-   w = 12
-   
-   try:
-      l = 600/int(sizePixel[0])
-   except:
-      pass
-
-   try:
-      w = 600/(int(sizePixel[1]))
-   except:
-      pass
-
-   label1.config(text='Pixel Size: ' + str(l) + ', ' + str(w))
-
-
-
-def initalize(cols, rows, showGrid=False):
+def initalize_game(cols, rows, showGrid=False):
    """
-   Vytvoří obrazovu
+   Vytvoří obrazovku hry
    """
    global pallet, grid, win, tools, lineThickness, saveMenu
 
@@ -141,153 +93,172 @@ def initalize(cols, rows, showGrid=False):
 
    pygame.display.update()
 
-#-----------------------------------------------------------------------#
 
-window = Tk()
-window.title('Paint Program')
+def draw_menu():
+    pygame.display.set_icon(paintBrush)   
+    win = pygame.display.set_mode((int(wid), int(heigh) + 100))
+    pygame.display.set_caption('Menu')
+    win.fill((255,255,255))
 
-t_var = StringVar()
-t_var.trace('w', updateLabel)
+    color_white = (255,255,255)
+    color_light = (170,170,170)
+    color_dark = (100,100,100)
+    
+    text_font = pygame.font.SysFont('Corbel',35)
+    text = text_font.render('Play' , True , color_white)
+    
+    while True:
+        for ev in pygame.event.get():
+        
+            if ev.type == pygame.QUIT:
+                pygame.quit()
+                
+            #ověření jestli se klikla myš
+            if ev.type == pygame.MOUSEBUTTONDOWN:
+                
+                #je kliknutí v pozici tlačítka?
+                if wid/2 <= mouse[0] <= wid/2+140 and heigh/2 <= mouse[1] <= heigh/2+40:
+                    gameloop()
+                    
+        win.fill((60,25,60))
+        mouse = pygame.mouse.get_pos()
+        
+        #hover přes tlačítko
+        if wid/2 <= mouse[0] <= wid/2+140 and heigh/2 <= mouse[1] <= heigh/2+40:
+            pygame.draw.rect(win,color_light,[wid/2,heigh/2,140,40])
+        else:
+            pygame.draw.rect(win,color_dark,[wid/2,heigh/2,140,40])
+        
 
-label = Label(window, text='# Of Rows and Columns (25,50): ')
-rowsCols = Entry(window, textvariable=t_var)
-
-label1 = Label(window, text="Pixel Size: 12.0, 12.0")
-var = IntVar()
-c = Checkbutton(window, text="View Grid", variable=var)
-submit = Button(window, text='Submit', command=onsubmit)
-window.bind('<Return>', onsubmit)
-
-submit.grid(columnspan=1, row=3, column=1,pady=2)
-c.grid(column=0, row=3)
-label1.grid(row=2)
-rowsCols.grid(row=0, column=1, pady=3, padx=8)
-label.grid(row=0, pady=3)
-
-window.update()
-mainloop()
-
-#------------------------------------------------------------------------#
+        win.blit(text , (wid/2+50,heigh/2))
+        pygame.display.update()
 
 
-#Hlavní smička
-initalize(cols, rows, var.get())
-pygame.display.update()
-color = (0,0,0) 
-thickness = 1
-replace = False
-doFill = False
+def gameloop():
+    global pallet
 
-run = True
-while run:
-    ev = pygame.event.get()
+    initalize_game(cols, rows, False)
+    pygame.display.update()
 
-    for event in ev:
-        if event.type == pygame.QUIT:
-            window = Tk()
-            window.withdraw()
-            
-            run = False
-         
-        if pygame.mouse.get_pressed()[0]: 
-            try:
-                pos = pygame.mouse.get_pos()
-                if pos[1] >= grid.height: 
-                    if pos[0] >= tools.startx and pos[0] <= tools.startx + tools.width and pos[1] >= tools.starty and pos[1] <+ tools.starty + tools.height: #If the mouse ic clicking on the tools grid
-                        replace = False
-                        doFill = False
-                        tools.drawGrid() 
-                        buttons = ['D', 'E', 'F', 'R', 'C']
-                        tools.setText(buttons)
-                        
-                        clicked = tools.clicked(pos)
-                        clicked.show(grid.screen, (255,0,0), 1, True)
+    color = (0,0,0) 
+    thickness = 1
+    replace = False
+    doFill = False
 
-                        if clicked.text == 'D': #Draw  
-                            color = (0,0,0)
-                        elif clicked.text == 'E': #Erase
-                            color = (255,255,255)
-                        elif clicked.text == 'F':# Fill
-                            doFill = True
-                        elif clicked.text == 'R':# Replace
-                            replace = True
-                        elif clicked.text == 'C':# Clear 
-                            grid.clearGrid()
+    run = True
+    while run:
+        ev = pygame.event.get()
+
+        for event in ev:
+            if event.type == pygame.QUIT:
+                window = Tk()
+                window.withdraw()
+                
+                run = False
+
+            if pygame.mouse.get_pressed()[0]: 
+                try:
+                    pos = pygame.mouse.get_pos()
+                    if pos[1] >= grid.height: 
+                        if pos[0] >= tools.startx and pos[0] <= tools.startx + tools.width and pos[1] >= tools.starty and pos[1] <+ tools.starty + tools.height: #If the mouse ic clicking on the tools grid
+                            replace = False
+                            doFill = False
                             tools.drawGrid() 
                             buttons = ['D', 'E', 'F', 'R', 'C']
                             tools.setText(buttons)
-                            l = tools.getGrid()
-                            l[0][0].show(grid.screen, (255,0,0),1, True)
                             
-                    elif pos[0] >= pallet.startx and pos[0] <= pallet.startx + pallet.width and pos[1] >= pallet.starty and pos[1] <= pallet.starty + pallet.height:
-                        clicked = pallet.clicked(pos)
-                        color = clicked.getColor() 
+                            clicked = tools.clicked(pos)
+                            clicked.show(grid.screen, (255,0,0), 1, True)
 
-                        pallet = colorPallet(win, 90, 90, 3, 3, True, 10, grid.height + 2)
-                        pallet.drawGrid()
+                            if clicked.text == 'D': #Draw  
+                                color = (0,0,0)
+                            elif clicked.text == 'E': #Erase
+                                color = (255,255,255)
+                            elif clicked.text == 'F':# Fill
+                                doFill = True
+                            elif clicked.text == 'R':# Replace
+                                replace = True
+                            elif clicked.text == 'C':# Clear 
+                                grid.clearGrid()
+                                tools.drawGrid() 
+                                buttons = ['D', 'E', 'F', 'R', 'C']
+                                tools.setText(buttons)
+                                l = tools.getGrid()
+                                l[0][0].show(grid.screen, (255,0,0),1, True)
 
-                        colorList = [(0,0,0), (255,255,255), (255,0,0), (0,255,0), (0,0,255), (255,255,0), (255,168,0), (244, 66, 173), (65, 244, 226)]
-                        pallet.setColor(colorList)
-                        clicked.show(grid.screen, (255,0,0), 3, True)
-                        
-                    elif pos[0] >= lineThickness.startx and pos[0] <= lineThickness.startx + lineThickness.width and pos[1] >= lineThickness.starty and pos[1] <= lineThickness.starty + lineThickness.height:
-                        lineThickness.drawGrid()
-                        buttons = ['1', '2', '3', '4']
-                        lineThickness.setText(buttons)
-                        
-                        clicked = lineThickness.clicked(pos)
-                        clicked.show(grid.screen, (255,0,0), 1, True)
+                        elif pos[0] >= pallet.startx and pos[0] <= pallet.startx + pallet.width and pos[1] >= pallet.starty and pos[1] <= pallet.starty + pallet.height:
+                            clicked = pallet.clicked(pos)
+                            color = clicked.getColor() 
 
-                        thickness = int(clicked.text) 
+                            pallet = colorPallet(win, 90, 90, 3, 3, True, 10, grid.height + 2)
+                            pallet.drawGrid()
 
+                            colorList = [(0,0,0), (255,255,255), (255,0,0), (0,255,0), (0,0,255), (255,255,0), (255,168,0), (244, 66, 173), (65, 244, 226)]
+                            pallet.setColor(colorList)
+                            clicked.show(grid.screen, (255,0,0), 3, True)
+
+                        elif pos[0] >= lineThickness.startx and pos[0] <= lineThickness.startx + lineThickness.width and pos[1] >= lineThickness.starty and pos[1] <= lineThickness.starty + lineThickness.height:
+                            lineThickness.drawGrid()
+                            buttons = ['1', '2', '3', '4']
+                            lineThickness.setText(buttons)
                             
-                else:
-                    if replace:
-                        tools.drawGrid()
-                        buttons = ['D', 'E', 'F', 'R', 'C']
-                        tools.setText(buttons)
-                        
-                        tools.getGrid()[0][0].show(grid.screen, (255,0,0), 1, True)
+                            clicked = lineThickness.clicked(pos)
+                            clicked.show(grid.screen, (255,0,0), 1, True)
 
-                        clicked = grid.clicked(pos)
-                        c = clicked.color
-                        replace = False
-
-                        for x in grid.getGrid():
-                            for y in x:
-                                if y.color == c:
-                                    y.click(grid.screen, color)
-                    elif doFill:
-                       clicked = grid.clicked(pos)
-                       if clicked.color != color:
-                          fill(clicked, grid, color, clicked.color)
-                          pygame.display.update()
-                                    
+                            thickness = int(clicked.text) 
+                    
                     else:
-                        name = pygame.display.get_caption()[0]
-                        if name.find("*") < 1:
-                           changeCaption(name + '*')
+                        if replace:
+                            tools.drawGrid()
+                            buttons = ['D', 'E', 'F', 'R', 'C']
+                            tools.setText(buttons)
+                            
+                            tools.getGrid()[0][0].show(grid.screen, (255,0,0), 1, True)
 
-                        clicked = grid.clicked(pos)
-                        clicked.click(grid.screen,color)
-                        if thickness == 2:
-                            for pixel in clicked.neighbors:
-                                pixel.click(grid.screen, color)
-                        elif thickness == 3:
-                            for pixel in clicked.neighbors:
-                                pixel.click(grid.screen, color)
-                                for p in pixel.neighbors:
-                                    p.click(grid.screen, color)
-                        elif thickness == 4:
-                            for pixel in clicked.neighbors:
-                                pixel.click(grid.screen, color)
-                                for p in pixel.neighbors:
-                                    p.click(grid.screen, color)
-                                    for x in p.neighbors:
-                                        x.click(grid.screen, color)
-                                         
-                pygame.display.update()
-            except AttributeError:
-                pass
+                            clicked = grid.clicked(pos)
+                            c = clicked.color
+                            replace = False
 
-pygame.quit()
+                            for x in grid.getGrid():
+                                for y in x:
+                                    if y.color == c:
+                                        y.click(grid.screen, color)
+                        
+                        elif doFill:
+                            clicked = grid.clicked(pos)
+                            if clicked.color != color:
+                                fill(clicked, grid, color, clicked.color)
+                                pygame.display.update()
+
+                        else:
+                            name = pygame.display.get_caption()[0]
+                            if name.find("*") < 1:
+                                changeCaption(name + '*')
+
+                            clicked = grid.clicked(pos)
+                            clicked.click(grid.screen,color)
+                            if thickness == 2:
+                                for pixel in clicked.neighbors:
+                                    pixel.click(grid.screen, color)
+                            elif thickness == 3:
+                                for pixel in clicked.neighbors:
+                                    pixel.click(grid.screen, color)
+                                    for p in pixel.neighbors:
+                                        p.click(grid.screen, color)
+                            elif thickness == 4:
+                                for pixel in clicked.neighbors:
+                                    pixel.click(grid.screen, color)
+                                    for p in pixel.neighbors:
+                                        p.click(grid.screen, color)
+                                        for x in p.neighbors:
+                                            x.click(grid.screen, color)
+
+                    pygame.display.update()
+                except AttributeError:
+                    pass
+
+if __name__ == '__main__':
+    #Hlavní smička
+    client = Client('Pepa')
+    draw_menu()
+    pygame.quit()
