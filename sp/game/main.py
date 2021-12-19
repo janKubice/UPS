@@ -260,5 +260,6 @@ def gameloop():
 if __name__ == '__main__':
     #Hlavní smička
     client = Client('Pepa')
-    draw_menu()
+    client.send_test()
+    #draw_menu()
     pygame.quit()
