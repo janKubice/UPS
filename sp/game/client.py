@@ -18,22 +18,31 @@ class Client:
             code (int): kód zprávy
             msg (string): dodatečné informace ke zprávě
         """
-        self.socket.sendall(f'{self.id};{code};{msg}')
+        text = f'{self.id};{code};{msg}'
+        print(f'Odesílám: {text}')
+        self.socket.sendall(str.encode(text))
 
     def receive_from_server(self):
         """Poslouchá server a zjišťuje zda nebylo něco přijato
         """
         while(True):
+            data = ''
             try:
                 data = self.socket.recv(1024)
             except:
                 print('něco špatně se serverem')
                 #TODO
-
+                
+            data = data.decode('UTF-8')
+            print(f'přijímám: {data}\n')
+            
             if len(data) == 0:
                 continue
-
+	        
             data = data.split(';')
+            if len(data) < 3:
+            	continue
+            	
             msg_code = int(data[0])
             msg_text = data[1]
 
@@ -88,7 +97,7 @@ class Client:
             return
 
         params = response.split(',')
-        if len(params) is not 3:
+        if len(params) != 3:
             return
 
         #TODO aktualizovat hrací plochu
@@ -125,7 +134,7 @@ class Client:
             return
 
         params = response.split(',')
-        if len(params) is not 2:
+        if len(params) != 2:
             return
 
         if params[0] == codes.ERR:
@@ -212,7 +221,8 @@ class Client:
             y (int): y pixelu
             color (str): barva pixelu
         """
-        pass
+        msg = f'{x}|{y}|{color}'
+        self.send_msg_to_server(codes.SET_PIXEL, msg)
 
     def send_get_item_to_draw(self):
         """Dotáže se serveru na obrázek ke kreslení

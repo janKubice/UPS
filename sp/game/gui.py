@@ -8,11 +8,11 @@ from grid import grid
 import sys
 
 class Gui:
-    def __init__(self) -> None:
+    def __init__(self, client) -> None:
         sys.setrecursionlimit(1000000)
         pygame.init()
 
-        self.paintBrush = pygame.image.load("sp/game/art/Paintbrush.png")
+        self.paintBrush = pygame.image.load("/home/jan/Documents/UPS/UPS/sp/game/art/Paintbrush.png")
         self.currentVersion = 1.1
 
         #Defaultní hodnoty
@@ -23,6 +23,8 @@ class Gui:
 
         self.client = None
         self.checked = []
+        
+        self.client = client
 
     def fill(self, spot, grid, color, c):
         if spot.color != c:
@@ -218,7 +220,7 @@ class Gui:
                                     for y in x:
                                         if y.color == c:
                                             y.click(grid.screen, color)
-                                            print(y)
+                                            
                             
                             elif doFill:
                                 clicked = grid.clicked(pos)
@@ -232,8 +234,9 @@ class Gui:
                                     self.changeCaption(name + '*')
 
                                 clicked = grid.clicked(pos)
-                                print(clicked)
                                 clicked.click(grid.screen,color)
+                                position = grid.get_position(pos)
+                                self.client.send_pixel(pos[0],pos[1],color)
                                 if thickness == 2:
                                     for pixel in clicked.neighbors:
                                         pixel.click(grid.screen, color)

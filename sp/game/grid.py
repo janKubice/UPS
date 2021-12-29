@@ -52,6 +52,13 @@ class grid(object):
         
         except IndexError:
             return False
+            
+    def get_position(self, pos):
+        t = pos[0]
+        w = pos[1]
+        g1 = int((t - self.startx) / self.grid[0][0].w)
+        g2 = int((w - self.starty) / self.grid[0][0].h)
+        return [g1,g2]
 
     def isSelected(self):
         """
