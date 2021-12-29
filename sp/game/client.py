@@ -1,17 +1,19 @@
 import socket
 
 import msg_codes as codes
+from gui import Gui
 
 class Client:
-    def __init__(self, name) -> None:
+    def __init__(self, name: str, gui:Gui) -> None:
         self.HOST = '127.0.0.1'  # The server's hostname or IP address
         self.PORT = 10000        # The port used by the server
         self.name = name
+        self.gui = gui
         self.id = -1
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((self.HOST, self.PORT))
 
-    def send_msg_to_server(self, code, msg):
+    def send_msg_to_server(self, code, msg = '-1'):
         """Odešle zprávu na server
 
         Args:
@@ -31,18 +33,18 @@ class Client:
                 data = self.socket.recv(1024)
             except:
                 print('něco špatně se serverem')
-                #TODO
-                
+                # TODO
+
             data = data.decode('UTF-8')
             print(f'přijímám: {data}\n')
-            
+
             if len(data) == 0:
                 continue
-	        
+
             data = data.split(';')
             if len(data) < 3:
-            	continue
-            	
+                continue
+
             msg_code = int(data[0])
             msg_text = data[1]
 
@@ -56,21 +58,21 @@ class Client:
             elif msg_code == codes.GET_ITEM:
                 self.receive_item(msg_text)
             elif msg_code == codes.SEND_QUESS:
-                pass
+                self.receive_quess_response(msg_text)
             elif msg_code == codes.CREATE_GAME:
-                pass
+                self.receive_create_game_response(msg_text)
             elif msg_code == codes.CONNECT_TO_GAME:
-                pass
+                self.receive_connect_response(msg_text)
             elif msg_code == codes.RECONNECT:
-                pass
+                self.receive_reconnect_response(msg_text)
             elif msg_code == codes.LEAVE:
-                pass
+                self.receive_leave_response(msg_text)
             elif msg_code == codes.GET_POINTS:
-                pass
+                self.receive_get_points(msg_text)
             elif msg_code == codes.GET_ID:
                 self.receive_id(msg_text)
 
-    def receive_games(self, response:str):
+    def receive_games(self, response: str):
         """Vypíše běžící hry na obrazovku
 
         Args:
@@ -84,10 +86,10 @@ class Client:
 
         for game in games:
             game_info = game.split(':')
-            #TODO updatnout GUI a vypsat postupně všechny hry
+            # TODO updatnout GUI a vypsat postupně všechny hry
         pass
 
-    def receive_pixel(self, response:str):
+    def receive_pixel(self, response: str):
         """Namaluje pixel na obrazovku
 
         Args:
@@ -100,9 +102,9 @@ class Client:
         if len(params) != 3:
             return
 
-        #TODO aktualizovat hrací plochu
+        self.gui.draw_pixel(params[0], params[1], params[2])
 
-    def receive_item(self, response:str):
+    def receive_item(self, response: str):
         """Ukáže jaké slovo má hráč malovat
 
         Args:
@@ -110,21 +112,19 @@ class Client:
         """
         if response == None or response == '' or response == codes.ERR:
             return
-        
-        #TODO ukázat slovo hráči
 
-    def receive_quess_response(self, response:str):
+        self.gui.draw_item_to_draw(response)
+
+    def receive_quess_response(self, response: str):
         if response == None or response == '' or response == codes.ERR:
             return
 
-        if response == 't':
-            #TODO ukázat hráči že uhodl
-            pass
+        if response == '1':
+            self.gui.draw_quess_response('Správně')
         else:
-            #TODO ukázat hráči, že neuhodl
-            pass
+            self.gui.draw_quess_response('Špatně')
 
-    def receive_create_game_response(self, response:str):
+    def receive_create_game_response(self, response: str):
         """Zjistí zda se povedla založit hra
 
         Args:
@@ -138,13 +138,13 @@ class Client:
             return
 
         if params[0] == codes.ERR:
-            #TODO Nepovedlo se
+            # TODO Nepovedlo se
             pass
         else:
-            #TODO povedlo se a založit, ukázat zakladeli id a tak
+            # TODO povedlo se a založit, ukázat zakladeli id a tak
             pass
 
-    def receive_connect_response(self, response:str):
+    def receive_connect_response(self, response: str):
         """Připojí hráče do hry pokud může
 
         Args:
@@ -152,13 +152,12 @@ class Client:
         """
         if response == None or response == '' or response == codes.ERR:
             return
-        
+
         params = response.split(',')
 
-        #TODO Přizpůsobit GUI
+        # TODO Přizpůsobit GUI
 
-
-    def receive_reconnect_response(self, response:str):
+    def receive_reconnect_response(self, response: str):
         """Připojí hráče do hry, přepne obrazovku a zobrazí hru v jajím stavu
 
         Args:
@@ -167,33 +166,33 @@ class Client:
         if response == None or response == '' or response == codes.ERR:
             return
 
-        #TODO vymyslet co je potřeba přijmout
+        # TODO vymyslet co je potřeba přijmout
 
-
-    def receive_leave_response(self, response:str):
+    def receive_leave_response(self, response: str):
         if response == None or response == '':
             return
 
         code = int(response)
         if code == codes.OK:
-            #TODO exit a tak
+            # TODO exit a tak
             pass
         else:
-            #TODO zkusit znovu a zatím neodpojovat
+            # TODO zkusit znovu a zatím neodpojovat
             pass
 
-    def receive_get_points(self, response:str):
+    def receive_get_points(self, response: str):
         if response == None or response == '':
             return
 
-        points = [int(numeric_string) for numeric_string in response.split(',')]
+        points = [int(numeric_string)
+                  for numeric_string in response.split(',')]
 
         if len(points) <= 1:
             return
 
-        #TODO update GUI
+        # TODO update GUI
 
-    def receive_id(self, response:str):
+    def receive_id(self, response: str):
         """Nastaví id hráče
 
         Args:
@@ -201,7 +200,7 @@ class Client:
         """
         if response == None or response == '':
             return
-        
+
         id = int(response)
         if id <= 0:
             return
@@ -213,7 +212,7 @@ class Client:
         """
         pass
 
-    def send_pixel(self, x: int , y:int, color:str):
+    def send_pixel(self, x: int, y: int, color: str):
         """Odešle na server požadavek na vyplnění pixelu
 
         Args:
@@ -230,7 +229,7 @@ class Client:
         Returns:
             str: objekt který má hráč namalovat
         """
-        pass
+        self.send_msg_to_server(codes.GET_ITEM)
 
     def send_quess(self, quess: str):
         """Odešle na server tip toho co si hráč myslí, pokud je to správně vrací True jinak False
@@ -238,28 +237,34 @@ class Client:
         Args:
             quess (str): odhad hráče
         """
-        pass
+        self.send_msg_to_server(codes.SEND_QUESS, quess)
 
     def send_create_new_game(self):
         """Odešle požadavek k vytvoření nové hry
         """
-        pass
+        self.send_msg_to_server(codes.CREATE_GAME)
 
     def send_connect_to_game(self):
-        pass
+        """Žádost o připojení
+        """
+        self.send_msg_to_server(codes.CONNECT_TO_GAME)
 
     def send_reconnect_to_game(self):
-        pass
+        """Žádost o znovu připojení
+        """
+        self.send_msg_to_server(codes.RECONNECT)
 
     def send_leave(self):
-        pass
+        """Informování o opuštění hry
+        """
+        self.send_msg_to_server(codes.LEAVE)
 
     def send_get_points(self):
         """Dotáže se serveru na počet bodu hráčů
         """
-        pass
+        self.send_msg_to_server(codes.GET_POINTS)
 
     def send_get_id(self):
         """Získá od serveru id hráče
         """
-        pass
+        self.send_msg_to_server(codes.GET_ID)

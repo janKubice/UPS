@@ -8,7 +8,7 @@ from grid import grid
 import sys
 
 class Gui:
-    def __init__(self, client) -> None:
+    def __init__(self) -> None:
         sys.setrecursionlimit(1000000)
         pygame.init()
 
@@ -21,10 +21,7 @@ class Gui:
         self.wid = 600
         self.heigh = 600
 
-        self.client = None
         self.checked = []
-        
-        self.client = client
 
     def fill(self, spot, grid, color, c):
         if spot.color != c:
@@ -48,6 +45,14 @@ class Gui:
     def changeCaption(self, txt):
         pygame.display.set_caption(txt)
 
+    def draw_pixel(self, x, y, color):
+        pass
+
+    def draw_item_to_draw(self, text):
+        pass
+
+    def draw_quess_response(self, text):
+        pass
 
     def initalize_game(self, cols, rows, showGrid=False):
         """
