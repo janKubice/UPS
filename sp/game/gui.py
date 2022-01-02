@@ -6,14 +6,15 @@ from grid import pixelArt
 from grid import menu
 from grid import grid
 import sys
+import client
 
 class Gui:
     def __init__(self) -> None:
         sys.setrecursionlimit(1000000)
         pygame.init()
 
-        self.paintBrush = pygame.image.load("/home/jan/Documents/UPS/UPS/sp/game/art/Paintbrush.png")
-        self.currentVersion = 1.1
+        #self.paintBrush = pygame.image.load("/home/jan/Documents/UPS/UPS/sp/game/art/Paintbrush.png")
+        self.paintBrush = pygame.image.load("sp/game/art/Paintbrush.png")
 
         #Defaultní hodnoty
         self.rows = 50
@@ -22,6 +23,10 @@ class Gui:
         self.heigh = 600
 
         self.checked = []
+        self.client:client.Client = None
+
+    def set_client(self, client):
+        self.client = client
 
     def fill(self, spot, grid, color, c):
         if spot.color != c:
@@ -99,16 +104,19 @@ class Gui:
 
     def draw_menu(self):
         pygame.display.set_icon(self.paintBrush)   
-        win = pygame.display.set_mode((int(self.wid), int(self.heigh) + 100))
+        win = pygame.display.set_mode((int(self.wid), int(self.heigh)))
         pygame.display.set_caption('Menu')
         win.fill((255,255,255))
 
         color_white = (255,255,255)
         color_light = (170,170,170)
         color_dark = (100,100,100)
+
+        btn_w = 140
+        btn_h = 40
         
         text_font = pygame.font.SysFont('Corbel',35)
-        text = text_font.render('Play' , True , color_white)
+        text = text_font.render('Connect' , True , color_white)
         
         while True:
             for ev in pygame.event.get():
@@ -120,20 +128,67 @@ class Gui:
                 if ev.type == pygame.MOUSEBUTTONDOWN:
                     
                     #je kliknutí v pozici tlačítka?
-                    if self.wid/2 <= mouse[0] <= self.wid/2+140 and self.heigh/2 <= mouse[1] <= self.heigh/2+40:
+                    if self.wid/2-(btn_w/2) <= mouse[0] <= self.wid/2+(btn_w/2) and self.heigh/2-(btn_h/2) <= mouse[1] <= self.heigh/2+(btn_h/2):
+                        if self.client.connect():
+                            print('Povedlo se připojit na server')
+                            self.client.send_get_id()
+                        else:
+                            print('Nepovedlo se připojit na server')
+                        
+            win.fill((60,25,60))
+            mouse = pygame.mouse.get_pos()
+            
+            #hover přes tlačítko
+            if self.wid/2-(btn_w/2) <= mouse[0] <= self.wid/2+(btn_w/2) and self.heigh/2-(btn_h/2) <= mouse[1] <= self.heigh/2+(btn_h/2):
+                pygame.draw.rect(win,color_light,[(self.wid/2)-(btn_w/2),self.heigh/2-(btn_h/2),btn_w,btn_h])
+            else:
+                pygame.draw.rect(win,color_dark,[(self.wid/2)-(btn_w/2),self.heigh/2-(btn_h/2),btn_w,btn_h])
+            
+
+            win.blit(text , ((self.wid/2)-50,self.heigh/2-(btn_h/2)))
+            pygame.display.update()
+
+    def draw_connection(self):
+        pygame.display.set_icon(self.paintBrush)   
+        win = pygame.display.set_mode((int(self.wid), int(self.heigh)))
+        pygame.display.set_caption('Menu')
+        win.fill((255,255,255))
+
+        color_white = (255,255,255)
+        color_light = (170,170,170)
+        color_dark = (100,100,100)
+
+        btn_w = 140
+        btn_h = 40
+        
+        text_font = pygame.font.SysFont('Corbel',35)
+        text = text_font.render('Join' , True , color_white)
+        
+        while True:
+            for ev in pygame.event.get():
+            
+                if ev.type == pygame.QUIT:
+                    #TODO odpojení hráče ze serveru -> uvolnění id na serveru
+                    pygame.quit()
+                    
+                #ověření jestli se klikla myš
+                if ev.type == pygame.MOUSEBUTTONDOWN:
+                    
+                    #je kliknutí v pozici tlačítka?
+                    if self.wid/2-(btn_w/2) <= mouse[0] <= self.wid/2+(btn_w/2) and self.heigh/2-(btn_h/2) <= mouse[1] <= self.heigh/2+(btn_h/2):
                         self.gameloop()
                         
             win.fill((60,25,60))
             mouse = pygame.mouse.get_pos()
             
             #hover přes tlačítko
-            if self.wid/2 <= mouse[0] <= self.wid/2+140 and self.heigh/2 <= mouse[1] <= self.heigh/2+40:
-                pygame.draw.rect(win,color_light,[self.wid/2,self.heigh/2,140,40])
+            if self.wid/2-(btn_w/2) <= mouse[0] <= self.wid/2+(btn_w/2) and self.heigh/2-(btn_h/2) <= mouse[1] <= self.heigh/2+(btn_h/2):
+                pygame.draw.rect(win,color_light,[(self.wid/2)-(btn_w/2),self.heigh/2-(btn_h/2),btn_w,btn_h])
             else:
-                pygame.draw.rect(win,color_dark,[self.wid/2,self.heigh/2,140,40])
+                pygame.draw.rect(win,color_dark,[(self.wid/2)-(btn_w/2),self.heigh/2-(btn_h/2),btn_w,btn_h])
             
 
-            win.blit(text , (self.wid/2+50,self.heigh/2))
+            win.blit(text , ((self.wid/2)-50,self.heigh/2-(btn_h/2)))
             pygame.display.update()
 
     def gameloop(self):
@@ -153,6 +208,8 @@ class Gui:
 
             for event in ev:
                 if event.type == pygame.QUIT:
+                    #TODO odpojení ze hry
+                    #self.client.send_leave()
                     window = Tk()
                     window.withdraw()
                     

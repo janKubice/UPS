@@ -1,17 +1,30 @@
 import socket
 
 import msg_codes as codes
-from gui import Gui
+import gui
 
 class Client:
-    def __init__(self, name: str, gui:Gui) -> None:
+    def __init__(self, name: str) -> None:
         self.HOST = '127.0.0.1'  # The server's hostname or IP address
         self.PORT = 10000        # The port used by the server
         self.name = name
-        self.gui = gui
+        self.gui = None
         self.id = -1
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((self.HOST, self.PORT))
+
+        self.application = gui.Gui()
+        self.application.set_client(self)
+        self.application.draw_menu()
+
+    def set_gui(self, gui:gui.Gui):
+        self.gui = gui
+
+    def connect(self):
+        try:
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket.connect((self.HOST, self.PORT))
+            return True
+        except:
+            return False
 
     def send_msg_to_server(self, code, msg = '-1'):
         """Odešle zprávu na server
@@ -72,22 +85,6 @@ class Client:
             elif msg_code == codes.GET_ID:
                 self.receive_id(msg_text)
 
-    def receive_games(self, response: str):
-        """Vypíše běžící hry na obrazovku
-
-        Args:
-            response (str): text ze serveru obsahující hry ve tvaru p_hracu_1:max_hracu_1:id_mistnosti_1:stav_1,p_hracu_2:max_hracu_2:id_mistnosti_2:stav_2...
-            Jednolivé hry jsou odděleny pomocí , a jednotlivé údaje v jedné hře pomocí :
-        """
-        if response == None or response == '' or response == codes.ERR:
-            return
-
-        games = response.split(',')
-
-        for game in games:
-            game_info = game.split(':')
-            # TODO updatnout GUI a vypsat postupně všechny hry
-        pass
 
     def receive_pixel(self, response: str):
         """Namaluje pixel na obrazovku
@@ -193,7 +190,7 @@ class Client:
         # TODO update GUI
 
     def receive_id(self, response: str):
-        """Nastaví id hráče
+        """Nastaví id hráče a změní obrazovku
 
         Args:
             response (str): přijatá zpráva ze serveru
@@ -206,6 +203,7 @@ class Client:
             return
 
         self.id = id
+        self.application.draw_connection()
 
     def send_get_games(self):
         """Zeptá se serveru na aktuální hry do kterých se lze připojit
@@ -268,3 +266,5 @@ class Client:
         """Získá od serveru id hráče
         """
         self.send_msg_to_server(codes.GET_ID)
+
+    
