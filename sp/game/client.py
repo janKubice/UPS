@@ -1,15 +1,18 @@
 import socket
 
+from pygame.key import name
+
 import msg_codes as codes
 import gui
 
 class Client:
-    def __init__(self, name: str) -> None:
+    def __init__(self) -> None:
         self.HOST = '127.0.0.1'  # The server's hostname or IP address
         self.PORT = 10000        # The port used by the server
-        self.name = name
-        self.gui = None
+        self.name = ''
+        self.gui: gui.Gui = None
         self.id = -1
+        self.lobby_id = -1
 
         self.application = gui.Gui()
         self.application.set_client(self)
@@ -116,7 +119,7 @@ class Client:
         if response == None or response == '' or response == codes.ERR:
             return
 
-        if response == '1':
+        if response == codes.ERR:
             self.gui.draw_quess_response('Správně')
         else:
             self.gui.draw_quess_response('Špatně')
@@ -128,18 +131,14 @@ class Client:
             # response (str): odpověď ze serveru ve formátu response_CODE,id_mistnosti
         """
         if response == None or response == '' or response == codes.ERR:
-            return
+            self.application.draw_connection(False)
 
         params = response.split(',')
-        if len(params) != 2:
-            return
-
         if params[0] == codes.ERR:
-            # TODO Nepovedlo se
-            pass
+            self.application.draw_connection(False)
         else:
-            # TODO povedlo se a založit, ukázat zakladeli id a tak
-            pass
+            self.lobby_id = params[0]
+            self.application.draw_lobby([self.name], True)
 
     def receive_connect_response(self, response: str):
         """Připojí hráče do hry pokud může
@@ -151,8 +150,10 @@ class Client:
             return
 
         params = response.split(',')
-
-        # TODO Přizpůsobit GUI
+        if params[0] == codes.ERR:
+            self.application.draw_connection(False)
+        else:
+            self.application.draw_lobby(params, False)
 
     def receive_reconnect_response(self, response: str):
         """Připojí hráče do hry, přepne obrazovku a zobrazí hru v jajím stavu
@@ -242,10 +243,14 @@ class Client:
         """
         self.send_msg_to_server(codes.CREATE_GAME)
 
-    def send_connect_to_game(self):
+    def send_connect_to_game(self, id:str) -> bool:
         """Žádost o připojení
         """
-        self.send_msg_to_server(codes.CONNECT_TO_GAME)
+        if id.isnumeric() and len(id) >= 1:
+            self.send_msg_to_server(codes.CONNECT_TO_GAME, int(id))
+            return True
+        
+        return False
 
     def send_reconnect_to_game(self):
         """Žádost o znovu připojení
@@ -262,9 +267,13 @@ class Client:
         """
         self.send_msg_to_server(codes.GET_POINTS)
 
-    def send_get_id(self):
+    def send_get_id(self, player_name:str):
         """Získá od serveru id hráče
         """
-        self.send_msg_to_server(codes.GET_ID)
+        self.name = player_name
+        self.send_msg_to_server(codes.GET_ID, msg=player_name)
+
+    def send_cancel_lobby(self):
+        self.send_msg_to_server(codes.CANCEL_GAME)
 
     
