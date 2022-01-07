@@ -23,11 +23,12 @@ class Gui:
         #Defaultní hodnoty
         self.rows = 50
         self.cols = 50
-        self.wid = 600
-        self.heigh = 600
+        self.width = 600
+        self.height = 600
 
         self.checked = []
         self.client:client.Client = None
+        self.clicked = None
 
     def set_client(self, client):
         self.client = client
@@ -55,7 +56,8 @@ class Gui:
         pygame.display.set_caption(txt)
 
     def draw_pixel(self, x, y, color):
-        pass
+        self.clicked = grid.clicked((x,y))
+        self.clicked.click(grid.screen,color)
 
     def draw_item_to_draw(self, text):
         pass
@@ -75,34 +77,18 @@ class Gui:
             pass
         
         pygame.display.set_icon(self.paintBrush)   
-        win = pygame.display.set_mode((int(self.wid), int(self.heigh) + 100))
+        win = pygame.display.set_mode((int(self.width), int(self.height) + 100))
         pygame.display.set_caption('Untitled')
         win.fill((255,255,255))
 
-        grid = pixelArt(win, int(self.wid), int(self.heigh), cols, rows, showGrid)
+        grid = pixelArt(win, int(self.width), int(self.height), cols, rows, showGrid)
         grid.drawGrid()
 
-        pallet = colorPallet(win, 90, 90, 3, 3, True, 10, grid.height + 2)
+        pallet = colorPallet(win, 90, 90, 3, 3, True, 10, grid.heightt + 2)
         pallet.drawGrid()
 
         colorList = [(0,0,0), (255,255,255), (255,0,0), (0,255,0), (0,0,255), (255,255,0), (255,168,0), (244, 66, 173), (65, 244, 226)]
         pallet.setColor(colorList)
-
-        tools = menu(win, 200, 40, 5, 1, True, grid.width - 210, grid.height + 50)
-        tools.drawGrid()
-
-        buttons = ['D', 'E', 'F', 'R', 'C']
-        tools.setText(buttons)
-        tools.drawGrid()
-
-        l = tools.getGrid()
-        l[0][0].show(grid.screen, (255,0,0),1, True)
-
-        lineThickness = menu(win, 180, 40, 4, 1, True, grid.width - 200, grid.height + 10)
-        lineThickness.drawGrid()
-
-        buttons = ['1', '2', '3', '4']
-        lineThickness.setText(buttons)
 
         pygame.display.update()
 
@@ -111,7 +97,7 @@ class Gui:
         První obrazovka kterou uživatel vidí
         """
         pygame.display.set_icon(self.paintBrush)   
-        win = pygame.display.set_mode((int(self.wid), int(self.heigh)))
+        win = pygame.display.set_mode((int(self.width), int(self.height)))
         pygame.display.set_caption('Menu')
         win.fill((255,255,255))
 
@@ -143,7 +129,7 @@ class Gui:
                 if ev.type == pygame.MOUSEBUTTONDOWN:
                     
                     #je kliknutí v pozici tlačítka?
-                    if self.wid/2-(btn_w/2) <= mouse[0] <= self.wid/2+(btn_w/2) and self.heigh/2-(btn_h/2) <= mouse[1] <= self.heigh/2+(btn_h/2):
+                    if self.width/2-(btn_w/2) <= mouse[0] <= self.width/2+(btn_w/2) and self.height/2-(btn_h/2) <= mouse[1] <= self.height/2+(btn_h/2):
                         #TODO pak odstranit
                         """ if self.client.connect():
                             print('Povedlo se připojit na server')
@@ -177,13 +163,13 @@ class Gui:
             input_rect.w = max(100, text_surface.get_width()+10)
             
             #hover přes tlačítko
-            if self.wid/2-(btn_w/2) <= mouse[0] <= self.wid/2+(btn_w/2) and self.heigh/2-(btn_h/2) <= mouse[1] <= self.heigh/2+(btn_h/2):
-                pygame.draw.rect(win,color_light,[(self.wid/2)-(btn_w/2),self.heigh/2-(btn_h/2),btn_w,btn_h])
+            if self.width/2-(btn_w/2) <= mouse[0] <= self.width/2+(btn_w/2) and self.height/2-(btn_h/2) <= mouse[1] <= self.height/2+(btn_h/2):
+                pygame.draw.rect(win,color_light,[(self.width/2)-(btn_w/2),self.height/2-(btn_h/2),btn_w,btn_h])
             else:
-                pygame.draw.rect(win,color_dark,[(self.wid/2)-(btn_w/2),self.heigh/2-(btn_h/2),btn_w,btn_h])
+                pygame.draw.rect(win,color_dark,[(self.width/2)-(btn_w/2),self.height/2-(btn_h/2),btn_w,btn_h])
             
 
-            win.blit(text , ((self.wid/2)-50,self.heigh/2-(btn_h/2)))
+            win.blit(text , ((self.width/2)-50,self.height/2-(btn_h/2)))
             win.blit(text_surface, (input_rect.x+5, input_rect.y+5))
             pygame.display.update()
 
@@ -192,7 +178,7 @@ class Gui:
         Obrazovka s textovým inputem pro zadání ID místnosti
         """
         pygame.display.set_icon(self.paintBrush)   
-        win = pygame.display.set_mode((int(self.wid), int(self.heigh)))
+        win = pygame.display.set_mode((int(self.width), int(self.height)))
         pygame.display.set_caption('Menu')
         win.fill((255,255,255))
 
@@ -234,7 +220,7 @@ class Gui:
                 if ev.type == pygame.MOUSEBUTTONDOWN:
                     succ = True
                     #je kliknutí v pozici tlačítka?
-                    if self.wid/2-(btn_w/2) <= mouse[0] <= self.wid/2+(btn_w/2) and self.heigh/2-(btn_h/2) <= mouse[1] <= self.heigh/2+(btn_h/2):
+                    if self.width/2-(btn_w/2) <= mouse[0] <= self.width/2+(btn_w/2) and self.height/2-(btn_h/2) <= mouse[1] <= self.height/2+(btn_h/2):
                         #TODO pak odstranit
                         """ if self.client.send_connect_to_game(user_text):
                             wrong_format_id = False
@@ -244,7 +230,7 @@ class Gui:
 
                         self.client.receive_connect_response("pepa,adam")
 
-                    if self.wid/2-(btn_w/2) <= mouse[0] <= self.wid/2+(btn_w/2) and self.heigh/2-(btn_h/2)+btn_h*1.5 <= mouse[1] <= self.heigh/2+(btn_h/2)+btn_h*1.5:
+                    if self.width/2-(btn_w/2) <= mouse[0] <= self.width/2+(btn_w/2) and self.height/2-(btn_h/2)+btn_h*1.5 <= mouse[1] <= self.height/2+(btn_h/2)+btn_h*1.5:
                         #TODO odstranit
                         #self.client.send_create_new_game()
                         self.client.receive_create_game_response('34')
@@ -275,35 +261,35 @@ class Gui:
             input_rect.w = max(100, text_surface.get_width()+10)
             
             #hover přes tlačítko
-            if self.wid/2-(btn_w/2) <= mouse[0] <= self.wid/2+(btn_w/2) and self.heigh/2-(btn_h/2) <= mouse[1] <= self.heigh/2+(btn_h/2):
-                pygame.draw.rect(win,color_light,[(self.wid/2)-(btn_w/2),self.heigh/2-(btn_h/2),btn_w,btn_h])
+            if self.width/2-(btn_w/2) <= mouse[0] <= self.width/2+(btn_w/2) and self.height/2-(btn_h/2) <= mouse[1] <= self.height/2+(btn_h/2):
+                pygame.draw.rect(win,color_light,[(self.width/2)-(btn_w/2),self.height/2-(btn_h/2),btn_w,btn_h])
             else:
-                pygame.draw.rect(win,color_dark,[(self.wid/2)-(btn_w/2),self.heigh/2-(btn_h/2),btn_w,btn_h])
+                pygame.draw.rect(win,color_dark,[(self.width/2)-(btn_w/2),self.height/2-(btn_h/2),btn_w,btn_h])
 
             #hover přes tlačítko
-            if self.wid/2-(btn_w/2) <= mouse[0] <= self.wid/2+(btn_w/2) and self.heigh/2-(btn_h/2)+btn_h*1.5 <= mouse[1] <= self.heigh/2+(btn_h/2)+btn_h*1.5:
-                pygame.draw.rect(win,color_light,[(self.wid/2)-(btn_w/2),self.heigh/2-(btn_h/2)+btn_h*1.5,btn_w,btn_h])
+            if self.width/2-(btn_w/2) <= mouse[0] <= self.width/2+(btn_w/2) and self.height/2-(btn_h/2)+btn_h*1.5 <= mouse[1] <= self.height/2+(btn_h/2)+btn_h*1.5:
+                pygame.draw.rect(win,color_light,[(self.width/2)-(btn_w/2),self.height/2-(btn_h/2)+btn_h*1.5,btn_w,btn_h])
             else:
-                pygame.draw.rect(win,color_dark,[(self.wid/2)-(btn_w/2),self.heigh/2-(btn_h/2)+btn_h*1.5,btn_w,btn_h])
+                pygame.draw.rect(win,color_dark,[(self.width/2)-(btn_w/2),self.height/2-(btn_h/2)+btn_h*1.5,btn_w,btn_h])
             
 
-            win.blit(text_join , ((self.wid/2)-50,self.heigh/2-(btn_h/2)))
-            win.blit(text_create , ((self.wid/2)-50,(self.heigh/2-(btn_h/2))+btn_h*1.5))
-            win.blit(text_id , ((self.wid/2)-250,50))
-            win.blit(text_name , ((self.wid/2)-50,50))
+            win.blit(text_join , ((self.width/2)-50,self.height/2-(btn_h/2)))
+            win.blit(text_create , ((self.width/2)-50,(self.height/2-(btn_h/2))+btn_h*1.5))
+            win.blit(text_id , ((self.width/2)-250,50))
+            win.blit(text_name , ((self.width/2)-50,50))
             win.blit(text_surface, (input_rect.x+5, input_rect.y+5))
 
             if wrong_format_id:
-                win.blit(text_wrong_id , ((self.wid/2)-50,100))
+                win.blit(text_wrong_id , ((self.width/2)-50,100))
 
             if succ == False:
-                win.blit(text_connection_fail , ((self.wid/2)-50,100))
+                win.blit(text_connection_fail , ((self.width/2)-50,100))
 
             pygame.display.update()
 
     def draw_lobby(self, players, admin):
         pygame.display.set_icon(self.paintBrush)   
-        win = pygame.display.set_mode((int(self.wid), int(self.heigh)))
+        win = pygame.display.set_mode((int(self.width), int(self.height)))
         pygame.display.set_caption('Menu')
         win.fill((255,255,255))
         print(players)
@@ -314,10 +300,10 @@ class Gui:
         btn_w = 140
         btn_h = 40
 
-        btn_play_pos_x = self.wid-btn_w
-        btn_play_pos_y = self.heigh-50
+        btn_play_pos_x = self.width-btn_w
+        btn_play_pos_y = self.height-50
         btn_back_pos_x = btn_w
-        btn_back_pos_y = self.heigh-50
+        btn_back_pos_y = self.height-50
         
         text_font = pygame.font.SysFont('Corbel',35)
         text_lobby = text_font.render('LOBBY', True, color_white)
@@ -366,11 +352,11 @@ class Gui:
                 pygame.draw.rect(win,color_dark,[(btn_back_pos_x)-(btn_w/2),btn_back_pos_y-(btn_h/2),btn_w,btn_h])
 
             for idx in range(len(players)):
-                win.blit(text_players_numbers[idx] , ((self.wid/2)-200,100+(50*idx)))
-                win.blit(text_players[idx] , ((self.wid/2)-50,100+(50*idx)))
+                win.blit(text_players_numbers[idx] , ((self.width/2)-200,100+(50*idx)))
+                win.blit(text_players[idx] , ((self.width/2)-50,100+(50*idx)))
 
-            win.blit(text_lobby , ((self.wid/2)-50,50))
-            win.blit(text_lobby_id , ((self.wid/2)+120,50))
+            win.blit(text_lobby , ((self.width/2)-50,50))
+            win.blit(text_lobby_id , ((self.width/2)+120,50))
             win.blit(text_leave , (btn_back_pos_x-(btn_w/2),btn_back_pos_y-(btn_h/2)))
             if admin:
                 win.blit(text_start , (btn_play_pos_x-(btn_w/2),btn_play_pos_y-(btn_h/2)))
@@ -388,8 +374,10 @@ class Gui:
 
         color = (0,0,0) 
         thickness = 1
-        replace = False
-        doFill = False
+
+        color_white = (255,255,255)
+        text_font = pygame.font.SysFont('Corbel',35)
+        text_lobby = text_font.render('LOBBY', True, color)
 
         run = True
         while run:
@@ -407,103 +395,31 @@ class Gui:
                 if pygame.mouse.get_pressed()[0]: 
                     try:
                         pos = pygame.mouse.get_pos()
-                        if pos[1] >= grid.height: 
-                            if pos[0] >= tools.startx and pos[0] <= tools.startx + tools.width and pos[1] >= tools.starty and pos[1] <+ tools.starty + tools.height: #If the mouse ic clicking on the tools grid
-                                replace = False
-                                doFill = False
-                                tools.drawGrid() 
-                                buttons = ['D', 'E', 'F', 'R', 'C']
-                                tools.setText(buttons)
-                                
-                                clicked = tools.clicked(pos)
-                                clicked.show(grid.screen, (255,0,0), 1, True)
+                        if pos[1] >= grid.heightt: 
+                            if pos[0] >= pallet.startx and pos[0] <= pallet.startx + pallet.width and pos[1] >= pallet.starty and pos[1] <= pallet.starty + pallet.heightt:
+                                self.clicked = pallet.clicked(pos)
+                                color = self.clicked.getColor() 
 
-                                if clicked.text == 'D': #Draw  
-                                    color = (0,0,0)
-                                elif clicked.text == 'E': #Erase
-                                    color = (255,255,255)
-                                elif clicked.text == 'F':# Fill
-                                    doFill = True
-                                elif clicked.text == 'R':# Replace
-                                    replace = True
-                                elif clicked.text == 'C':# Clear 
-                                    grid.clearGrid()
-                                    tools.drawGrid() 
-                                    buttons = ['D', 'E', 'F', 'R', 'C']
-                                    tools.setText(buttons)
-                                    l = tools.getGrid()
-                                    l[0][0].show(grid.screen, (255,0,0),1, True)
-
-                            elif pos[0] >= pallet.startx and pos[0] <= pallet.startx + pallet.width and pos[1] >= pallet.starty and pos[1] <= pallet.starty + pallet.height:
-                                clicked = pallet.clicked(pos)
-                                color = clicked.getColor() 
-
-                                pallet = colorPallet(win, 90, 90, 3, 3, True, 10, grid.height + 2)
+                                pallet = colorPallet(win, 90, 90, 3, 3, True, 10, grid.heightt + 2)
                                 pallet.drawGrid()
 
                                 colorList = [(0,0,0), (255,255,255), (255,0,0), (0,255,0), (0,0,255), (255,255,0), (255,168,0), (244, 66, 173), (65, 244, 226)]
                                 pallet.setColor(colorList)
-                                clicked.show(grid.screen, (255,0,0), 3, True)
-
-                            elif pos[0] >= lineThickness.startx and pos[0] <= lineThickness.startx + lineThickness.width and pos[1] >= lineThickness.starty and pos[1] <= lineThickness.starty + lineThickness.height:
-                                lineThickness.drawGrid()
-                                buttons = ['1', '2', '3', '4']
-                                lineThickness.setText(buttons)
-                                
-                                clicked = lineThickness.clicked(pos)
-                                clicked.show(grid.screen, (255,0,0), 1, True)
-
-                                thickness = int(clicked.text) 
+                                self.clicked.show(grid.screen, (255,0,0), 3, True)
                         
                         else:
-                            if replace:
-                                tools.drawGrid()
-                                buttons = ['D', 'E', 'F', 'R', 'C']
-                                tools.setText(buttons)
-                                
-                                tools.getGrid()[0][0].show(grid.screen, (255,0,0), 1, True)
+                            name = pygame.display.get_caption()[0]
+                            if name.find("*") < 1:
+                                self.changeCaption(name + '*')
 
-                                clicked = grid.clicked(pos)
-                                c = clicked.color
-                                replace = False
-
-                                for x in grid.getGrid():
-                                    for y in x:
-                                        if y.color == c:
-                                            y.click(grid.screen, color)
-                                            
-                            
-                            elif doFill:
-                                clicked = grid.clicked(pos)
-                                if clicked.color != color:
-                                    self.fill(clicked, grid, color, clicked.color)
-                                    pygame.display.update()
-
-                            else:
-                                name = pygame.display.get_caption()[0]
-                                if name.find("*") < 1:
-                                    self.changeCaption(name + '*')
-
-                                clicked = grid.clicked(pos)
-                                clicked.click(grid.screen,color)
-                                position = grid.get_position(pos)
-                                self.client.send_pixel(pos[0],pos[1],color)
-                                if thickness == 2:
-                                    for pixel in clicked.neighbors:
-                                        pixel.click(grid.screen, color)
-                                elif thickness == 3:
-                                    for pixel in clicked.neighbors:
-                                        pixel.click(grid.screen, color)
-                                        for p in pixel.neighbors:
-                                            p.click(grid.screen, color)
-                                elif thickness == 4:
-                                    for pixel in clicked.neighbors:
-                                        pixel.click(grid.screen, color)
-                                        for p in pixel.neighbors:
-                                            p.click(grid.screen, color)
-                                            for x in p.neighbors:
-                                                x.click(grid.screen, color)
+                            self.clicked = grid.clicked(pos)
+                            self.clicked.click(grid.screen,color)
+                            position = grid.get_position(pos)
+                            #TODO odkomentovat
+                            #self.client.send_pixel(pos[0],pos[1],color)
+                            #self.client.receive_pixel('2;448,547,(0, 0, 0)')
 
                         pygame.display.update()
                     except AttributeError:
                         pass
+            win.blit(text_lobby , ((self.width/2)-50,50))

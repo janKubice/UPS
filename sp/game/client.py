@@ -93,16 +93,18 @@ class Client:
         """Namaluje pixel na obrazovku
 
         Args:
-            response (str): odpověď ze serveru
+            response (str): odpověď ze serveru ve formátu '448,547,0, 0, 0'
         """
         if response == None or response == '' or response == codes.ERR:
             return
 
         params = response.split(',')
-        if len(params) != 3:
+        
+        if len(params) != 5:
             return
 
-        self.gui.draw_pixel(params[0], params[1], params[2])
+        color = (params[2], params[3], params[4])
+        self.gui.draw_pixel(params[0], params[1], color)
 
     def receive_item(self, response: str):
         """Ukáže jaké slovo má hráč malovat
@@ -219,7 +221,9 @@ class Client:
             y (int): y pixelu
             color (str): barva pixelu
         """
-        msg = f'{x}|{y}|{color}'
+        color.replace('(', '')
+        color.replace(')','')
+        msg = f'{x},{y},{color}'
         self.send_msg_to_server(codes.SET_PIXEL, msg)
 
     def send_get_item_to_draw(self):
