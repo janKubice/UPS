@@ -18,7 +18,7 @@ class Gui:
         pygame.init()
 
         #self.paintBrush = pygame.image.load("/home/jan/Documents/UPS/UPS/sp/game/art/Paintbrush.png")
-        self.paintBrush = pygame.image.load("sp/game/art/Paintbrush.png")
+        self.paintBrush = pygame.image.load("art/Paintbrush.png")
 
         #Defaultní hodnoty
         self.rows = 50
@@ -118,7 +118,6 @@ class Gui:
 
         color = color_passive
         active = False
-        
         while True:
             for ev in pygame.event.get():
             
@@ -130,13 +129,11 @@ class Gui:
                     
                     #je kliknutí v pozici tlačítka?
                     if self.width/2-(btn_w/2) <= mouse[0] <= self.width/2+(btn_w/2) and self.height/2-(btn_h/2) <= mouse[1] <= self.height/2+(btn_h/2):
-                        #TODO pak odstranit
-                        """ if self.client.connect():
+                        if self.client.connect():
                             print('Povedlo se připojit na server')
                             self.client.send_get_id(user_text)
                         else:
-                            print('Nepovedlo se připojit na server') """
-                        self.client.receive_id("1")
+                            print('Nepovedlo se připojit na server')
 
                     if input_rect.collidepoint(ev.pos):
                         active = True

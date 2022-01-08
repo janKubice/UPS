@@ -1,94 +1,177 @@
-#include <stdio.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <stdlib.h>
-#include <string.h>
-#include <pthread.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#define MAX 80
-#define PORT 10000
-#define SA struct sockaddr
-   
-//Funkce která bude poslouchat dotazům
-void* listening(int sockfd)
+/**
+ * Server pro hru
+ * prelozi se prikazem gcc server.c -lpthread -o server
+ * 
+ * Author: Jan Kubice
+ * Date: 27.12.2021
+ * Version: Fakt obri cislo
+ */ 
+
+#include<stdio.h>
+#include<string.h>    
+#include<stdlib.h>    
+#include<sys/socket.h>
+#include<arpa/inet.h> 
+#include<unistd.h> 
+#include<pthread.h>
+#define CLIENT_MSG_SIZE 512
+
+#define CLIENT_GET_GAMES "1"
+#define CLIENT_SET_PIXEL "2"
+#define CLIENT_GET_ITEM "3"
+#define CLIENT_SEND_QUESS "4"
+#define CLIENT_CREATE_GAME "5"
+#define CLIENT_CONNECT_TO_GAME "6"
+#define CLIENT_RECONNECT "7"
+#define CLIENT_LEAVE "8"
+#define CLIENT_GET_POINTS "9"
+#define CLIENT_GET_ID "10"
+#define CLIENT_CANCEL_GAME "11"
+
+#define OK "100"
+#define ERR "-1"
+
+
+void *connection_handler(void *);
+
+struct Player
 {
-    printf(sockfd);
-    char buff[MAX];
-    int n;
-    // infinite loop for chat
-    for (;;) {
-        bzero(buff, MAX);
+    /* data */
+} player;
 
-        //Přečte zprávu od klienta a uloží jí to buff
-        if (strlen(buff) != 0){
-            read(sockfd, buff, sizeof(buff));
-            printf("from client: %s", buff);
-            
-            //TODO zde se bude možnost ptát co přišlo a podle toho se zařídit
+struct Game
+{
+    /* data */
+} game;
 
-            printf("To client: ");
-            bzero(buff,MAX);
-            n = 0;
-            while ((buff[n++] == getchar()) != '\n');
-            write(sockfd, buff, sizeof(buff));
+
+/**
+ * @brief Vstupni bod programu
+ * 
+ * @param argc pocet argumentu
+ * @param argv pole argumentu
+ * @return int navratova hodnota programu
+ */
+int main(int argc , char *argv[])
+{
+    int socket_desc , client_sock , c;
+    struct sockaddr_in server , client;
+     
+    //vytvoreni socketu
+    socket_desc = socket(AF_INET , SOCK_STREAM , 0);
+    if (socket_desc == -1)
+    {
+        printf("Could not create socket\n");
+    }
+    printf("Socket created\n");
+     
+    server.sin_family = AF_INET;
+    server.sin_addr.s_addr = INADDR_ANY;
+    server.sin_port = htons( 10000 );
+     
+    if( bind(socket_desc,(struct sockaddr *)&server , sizeof(server)) < 0)
+    {
+        printf("bind failed. Error\n");
+        return 1;
+    }
+    printf("bind done\n");
+
+    listen(socket_desc , 3);
+
+    c = sizeof(struct sockaddr_in);
+	pthread_t thread_id;
+	
+    while( (client_sock = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)) )
+    {
+        printf("Connection accepted\n");
+        if( pthread_create( &thread_id , NULL ,  connection_handler , (void*) &client_sock) < 0)
+        {
+            printf("could not create thread\n");
         }
+        printf("Handler assigned\n");
     }
+     
+    if (client_sock < 0)
+    {
+        printf("accept failed\n");
+        return 1;
+    }
+     
+    return 0;
 }
-   
-//hlavní funkce
-int main()
+ 
+/**
+ * @brief Funkce je spustena ve vlastnim vlakne a obstarava jednoho klienta, zpracovava prijmute zpravy
+ * 
+ * @param socket_desc socket uzivatele
+ * @return void* 
+ */
+void *connection_handler(void *socket_desc)
 {
-    int sockfd, connfd, len;
-    struct sockaddr_in servaddr, cli;
-   
-    //Vytvoření soketu a verifikace 
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1) {
-        printf("socket creation failed...\n");
-        exit(0);
-    }
-    else
-        printf("Socket successfully created..\n");
-    bzero(&servaddr, sizeof(servaddr));
-   
-    //Nastavení IP a portu
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    servaddr.sin_port = htons(PORT);
-   
-    //Binding nového soketu s danou IP a verifikace
-    if ((bind(sockfd, (SA*)&servaddr, sizeof(servaddr))) != 0) {
-        printf("socket bind failed...\n");
-        exit(0);
-    }
-    else
-        printf("Socket successfully binded..\n");
-   
-    //server je ready na poslouchání, verifikace zda OK
-    if ((listen(sockfd, 5)) != 0) {
-        printf("Listen failed...\n");
-        exit(0);
-    }
-    else
-        printf("Server listening..\n");
-    len = sizeof(cli);
-   
+    int sock = *(int*)socket_desc;
+    int read_size;
+    char *message , client_message[CLIENT_MSG_SIZE];
+ 
+    //prijimani zpravy
+    while( (read_size = recv(sock , client_message , CLIENT_MSG_SIZE , 0)) > 0 )
+    {
+        //end of string marker
+        client_message[read_size] = '\0';
+        printf("server prijmul: %s\n", client_message);	
+		
+        int i = 0;
+        char *p = strtok(client_message, ";");
+        char *params[3];
 
-    // Přijme data paket od klienta a varifikuje
-    connfd = accept(sockfd, (SA*)&cli, &len);
-    if (connfd < 0) {
-        printf("server accept failed...\n");
-        exit(0);
+        while (p != NULL)
+        {
+            params[i++] = p;
+            p = strtok(NULL, ";");
+        }
+
+        if (strcmp(params[1], CLIENT_SET_PIXEL) == 0){
+
+        }
+        else if (strcmp(params[1], CLIENT_GET_ITEM) == 0){
+
+        }
+        else if (strcmp(params[1], CLIENT_SEND_QUESS) == 0){
+            
+        }
+        else if (strcmp(params[1], CLIENT_CREATE_GAME) == 0){
+            
+        }
+        else if (strcmp(params[1], CLIENT_CONNECT_TO_GAME) == 0){
+            
+        }
+        else if (strcmp(params[1], CLIENT_RECONNECT) == 0){
+            
+        }
+        else if (strcmp(params[1], CLIENT_LEAVE) == 0){
+            
+        }
+        else if (strcmp(params[1], CLIENT_GET_POINTS) == 0){
+            
+        }
+        else if (strcmp(params[1], CLIENT_GET_ID) == 0){
+            
+        }
+        else if (strcmp(params[1], CLIENT_CANCEL_GAME) == 0){
+            
+        }
+
+	    memset(client_message, 0, CLIENT_MSG_SIZE);
     }
-    else
-        printf("server accept the client...\n");
-   
-    //Vytvoření vlákna a naslouchání dotazům klienta
-    pthread_t thread;
-    pthread_create(&thread, NULL, listening, &connfd);
-    pthread_join(thread, NULL);
-    
-    // Nakonec zavření paketu
-    close(sockfd);
-}
+     
+    if(read_size == 0)
+    {
+        puts("Client disconnected");
+        fflush(stdout);
+    }
+    else if(read_size == -1)
+    {
+        perror("recv failed");
+    }
+         
+    return 0;
+} 
