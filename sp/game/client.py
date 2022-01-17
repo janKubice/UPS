@@ -1,9 +1,16 @@
 import socket
+from time import sleep
+from turtle import update
+from urllib.parse import _NetlocResultMixinBytes
+from pygame.draw import lines
 
 from pygame.key import name
 
 import msg_codes as codes
 import gui
+import threading
+import ipaddress
+from pygame import Color
 
 class Client:
     def __init__(self) -> None:
@@ -13,6 +20,27 @@ class Client:
         self.gui: gui.Gui = None
         self.id = -1
         self.lobby_id = -1
+        self.points = "0"
+
+        self.run_receive = False
+        self.run_ping = False
+
+        self.thread_receive = None
+        self.thread_ping = None
+
+        self.thread_menu = None
+        self.thread_connection = None
+        self.thread_lobby = None
+        self.thread_game = None
+        self.thread_wait = None
+        self.thread_final_screen = None
+
+        self.run_menu = False
+        self.run_connection = False
+        self.run_lobby = False
+        self.run_game = False
+        self.run_wait = False
+        self.run_final_screen = False
 
         self.application = gui.Gui()
         self.application.set_client(self)
@@ -21,15 +49,40 @@ class Client:
     def set_gui(self, gui:gui.Gui):
         self.gui = gui
 
-    def connect(self):
+    def connect(self, user_name, ip, port):
+        self.HOST = ip
+        self.PORT = int(port)
+
         try:
+            self.run_receive = True
+            self.run_ping = True
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((self.HOST, self.PORT))
-            return True
-        except:
-            return False
+            self.thread_receive = threading.Thread(target=self.receive_from_server, args=())
+            self.thread_receive.start()
+            self.send_get_id(user_name)
 
-    def send_msg_to_server(self, code, msg = '-1'):
+            self.thread_ping = threading.Thread(target=self.ping, args=())
+            self.thread_ping.start()
+            
+        except:
+            print('chyba, nepodarilo se pripojit. Server budto nebezi nebo jste zadali spatne udaje pro pripojeni')
+
+    def ping(self):
+        while(self.run_ping):
+            if (self.send_msg_to_server(codes.PING) == False):
+                print('Odpojeni od server, asi umrel')
+                self.end_threads()
+            sleep(15)
+
+    def end_threads(self):
+        self.run_receive = False
+        self.run_ping = False
+        self.thread_connection.join()
+        self.thread_ping.join()
+        self.socket.close()
+
+    def send_msg_to_server(self, code, msg = '-1', printing = True):
         """Odešle zprávu na server
 
         Args:
@@ -37,56 +90,74 @@ class Client:
             msg (string): dodatečné informace ke zprávě
         """
         text = f'{self.id};{code};{msg}'
-        print(f'Odesílám: {text}')
-        self.socket.sendall(str.encode(text))
+        if printing:
+            print(f'Odesílám: {text}')
+        try:
+            self.socket.sendall(str.encode(text))
+            return True
+        except:
+            return False
 
     def receive_from_server(self):
         """Poslouchá server a zjišťuje zda nebylo něco přijato
         """
-        while(True):
-            data = ''
+        while(self.run_receive):
             try:
                 data = self.socket.recv(1024)
+                data = data.decode()
             except:
-                print('něco špatně se serverem')
-                # TODO
+                print('Chyba pri prijimani dat')
 
-            data = data.decode('UTF-8')
             print(f'přijímám: {data}\n')
 
-            if len(data) == 0:
-                continue
+            if (len(data) == 0):
+                print('Server se chova divne, uzaviram spojeni')
+                self.end_threads()
+
 
             data = data.split(';')
-            if len(data) < 3:
-                continue
-
+            data = [s.rstrip('\x00') for s in data]
+            print(f'splitnuta data: {data}')
             msg_code = int(data[0])
             msg_text = data[1]
-
-            if msg_code <= 0 or len(msg_text) <= 0:
-                continue
-
+            
             if msg_code == codes.GET_GAMES:
                 pass
             elif msg_code == codes.SET_PIXEL:
                 self.receive_pixel(msg_text)
+
             elif msg_code == codes.GET_ITEM:
                 self.receive_item(msg_text)
+
             elif msg_code == codes.SEND_QUESS:
                 self.receive_quess_response(msg_text)
+
             elif msg_code == codes.CREATE_GAME:
                 self.receive_create_game_response(msg_text)
+
             elif msg_code == codes.CONNECT_TO_GAME:
                 self.receive_connect_response(msg_text)
+
             elif msg_code == codes.RECONNECT:
                 self.receive_reconnect_response(msg_text)
+
             elif msg_code == codes.LEAVE:
                 self.receive_leave_response(msg_text)
+
             elif msg_code == codes.GET_POINTS:
                 self.receive_get_points(msg_text)
+
             elif msg_code == codes.GET_ID:
                 self.receive_id(msg_text)
+
+            elif msg_code == codes.NEXT_ROUND:
+                self.receive_next_round(msg_text)
+
+            elif msg_code == codes.CANCEL_GAME:
+                self.receive_cancel_game()
+
+            elif msg_code == codes.ERR:
+                self.show_error(msg_text)
 
 
     def receive_pixel(self, response: str):
@@ -95,16 +166,13 @@ class Client:
         Args:
             response (str): odpověď ze serveru ve formátu '448,547,0, 0, 0'
         """
-        if response == None or response == '' or response == codes.ERR:
-            return
-
         params = response.split(',')
         
         if len(params) != 5:
             return
-
-        color = (params[2], params[3], params[4])
-        self.gui.draw_pixel(params[0], params[1], color)
+        print(params)
+        self.application.draw_pixel(int(params[0]), int(params[1]), Color(int(params[2]), 
+                                    int(params[3]), int(params[4])))
 
     def receive_item(self, response: str):
         """Ukáže jaké slovo má hráč malovat
@@ -112,50 +180,43 @@ class Client:
         Args:
             response (str): odpověď ze serveru co má hráč malovat
         """
-        if response == None or response == '' or response == codes.ERR:
-            return
-
-        self.gui.draw_item_to_draw(response)
+        self.application.word = response
 
     def receive_quess_response(self, response: str):
-        if response == None or response == '' or response == codes.ERR:
-            return
-
         if response == codes.ERR:
-            self.gui.draw_quess_response('Správně')
+            self.application.draw_quess_response('Správně')
         else:
-            self.gui.draw_quess_response('Špatně')
+            self.application.draw_quess_response('Špatně')
+            self.receive_get_points(response)
 
     def receive_create_game_response(self, response: str):
         """Zjistí zda se povedla založit hra
 
         Args:
             # response (str): odpověď ze serveru ve formátu response_CODE,id_mistnosti
-        """
-        if response == None or response == '' or response == codes.ERR:
-            self.application.draw_connection(False)
-
-        params = response.split(',')
-        if params[0] == codes.ERR:
+        """        
+        if int(response) == codes.ERR:
             self.application.draw_connection(False)
         else:
-            self.lobby_id = params[0]
-            self.application.draw_lobby([self.name], True)
-
+            self.lobby_id = int(response)
+            self.application.players = [self.name]
+            self.thread_lobby = threading.Thread(target=self.application.draw_lobby, args=(True, response))
+            self.thread_lobby.start()
+            self.thread_connection.join()
+            
     def receive_connect_response(self, response: str):
         """Připojí hráče do hry pokud může
 
         Args:
             response (str): odpověď se serveru, obsahuje zda se povedlo připojit, pokud ano obsahuje dále údaje o hře
         """
-        if response == None or response == '' or response == codes.ERR:
-            return
-
         params = response.split(',')
-        if params[0] == codes.ERR:
-            self.application.draw_connection(False)
-        else:
-            self.application.draw_lobby(params, False)
+
+        self.application.players = params[1:]
+        if self.run_lobby == False:
+            self.thread_lobby = threading.Thread(target=self.application.draw_lobby, args=(int(params[0]), self.lobby_id))
+            self.thread_lobby.start()
+
 
     def receive_reconnect_response(self, response: str):
         """Připojí hráče do hry, přepne obrazovku a zobrazí hru v jajím stavu
@@ -181,16 +242,37 @@ class Client:
             pass
 
     def receive_get_points(self, response: str):
-        if response == None or response == '':
-            return
+        points = int(response)
+        self.points = points
 
-        points = [int(numeric_string)
-                  for numeric_string in response.split(',')]
+    def receive_next_round(self, msg):
+        msg = msg.split(',')
+        on_turn = int(msg[0])
 
-        if len(points) <= 1:
-            return
 
-        # TODO update GUI
+        self.thread_wait = threading.Thread(target=self.application.draw_wait_for_game, args=())
+        self.thread_wait.start()
+        
+        if self.thread_lobby.is_alive():
+            self.thread_lobby.join()
+
+        if self.thread_game != None and self.thread_game.is_alive():
+            self.thread_game.join()
+
+        self.thread_game = threading.Thread(target=self.application.gameloop, args=(on_turn, msg[1], self.points))
+        self.thread_game.start()
+        self.thread_wait.join()
+
+    def receive_cancel_game(self):
+        if self.run_lobby:
+            self.thread_connection = threading.Thread(target=self.application.draw_connection, args=())
+            self.thread_connection.start()
+            self.thread_lobby.join()
+        elif self.run_game:
+            self.thread_connection = threading.Thread(target=self.application.draw_connection, args=())
+            self.thread_connection.start()
+            self.thread_lobby.join()
+
 
     def receive_id(self, response: str):
         """Nastaví id hráče a změní obrazovku
@@ -198,22 +280,17 @@ class Client:
         Args:
             response (str): přijatá zpráva ze serveru
         """
-        if response == None or response == '':
-            return
-
         id = int(response)
-        if id <= 0:
-            return
-
         self.id = id
-        self.application.draw_connection()
+        self.thread_connection = threading.Thread(target=self.application.draw_connection, args=())
+        self.thread_connection.start()
 
     def send_get_games(self):
         """Zeptá se serveru na aktuální hry do kterých se lze připojit
         """
         pass
 
-    def send_pixel(self, x: int, y: int, color: str):
+    def send_pixel(self, x: int, y: int, color:set):
         """Odešle na server požadavek na vyplnění pixelu
 
         Args:
@@ -221,10 +298,17 @@ class Client:
             y (int): y pixelu
             color (str): barva pixelu
         """
-        color.replace('(', '')
-        color.replace(')','')
-        msg = f'{x},{y},{color}'
-        self.send_msg_to_server(codes.SET_PIXEL, msg)
+        color = str(color)
+        color = color[1:-2]
+        color = color.replace(" ", "")
+        color_rgb = color.split(',')
+
+        for idx, value in enumerate(color_rgb):
+            if value == '':
+                color_rgb[idx] = '0'
+        
+        msg = f'{x},{y},{color_rgb[0]},{color_rgb[1]},{color_rgb[2]}'
+        self.send_msg_to_server(codes.SET_PIXEL, msg, False)
 
     def send_get_item_to_draw(self):
         """Dotáže se serveru na obrázek ke kreslení
@@ -274,10 +358,32 @@ class Client:
     def send_get_id(self, player_name:str):
         """Získá od serveru id hráče
         """
-        self.name = player_name
-        self.send_msg_to_server(codes.GET_ID, msg=player_name)
+        if (len(player_name) > 0):
+            self.name = player_name
+            self.send_msg_to_server(codes.GET_ID, msg=player_name)
 
     def send_cancel_lobby(self):
         self.send_msg_to_server(codes.CANCEL_GAME)
 
+    def send_start_game(self):
+        self.send_msg_to_server(codes.START_GAME)
+
+    def show_error(self, msg):
+        #TODO zobrazit na obrazovce treba na 10 sekund
+        print(msg)
+
+    def receive_wait_for_next_round(self):
+        self.thread_wait = threading.Thread(target=self.application.draw_wait_for_game, args=())
+        self.thread_wait.start()
+        if self.thread_game != None and self.thread_game.is_alive():
+            self.thread_game.join()
+
+    def receive_final_screen(self, msg):
+        self.thread_final_screen = threading.Thread(target=self.application.draw_final_screen, args=(msg))
+        self.thread_final_screen.start()
+
+        if self.run_game == True:
+            self.thread_game.join()
+        elif self.run_wait == True:
+            self.thread_wait.join()
     
