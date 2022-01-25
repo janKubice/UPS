@@ -21,6 +21,7 @@ class Client:
         self.id = -1
         self.lobby_id = -1
         self.points = "0"
+        self.winner = ""
 
         self.run_receive = False
         self.run_ping = False
@@ -35,7 +36,8 @@ class Client:
         self.thread_wait = None
         self.thread_final_screen = None
 
-        self.run_menu = False
+        self.run_menu = True
+        self.run_menu_2 = True
         self.run_connection = False
         self.run_lobby = False
         self.run_game = False
@@ -44,7 +46,10 @@ class Client:
 
         self.application = gui.Gui()
         self.application.set_client(self)
+        
         self.application.draw_menu()
+        #self.thread_menu = threading.Thread(target=self.application.draw_menu, args=())
+        #self.thread_menu.start()
 
     def set_gui(self, gui:gui.Gui):
         self.gui = gui
@@ -72,6 +77,7 @@ class Client:
         while(self.run_ping):
             if (self.send_msg_to_server(codes.PING) == False):
                 print('Odpojeni od server, asi umrel')
+                self.go_to_menu()
                 self.end_threads()
             sleep(15)
 
@@ -112,7 +118,9 @@ class Client:
 
             if (len(data) == 0):
                 print('Server se chova divne, uzaviram spojeni')
+                self.go_to_menu()
                 self.end_threads()
+                break
 
 
             data = data.split(';')
@@ -159,6 +167,11 @@ class Client:
             elif msg_code == codes.ERR:
                 self.show_error(msg_text)
 
+            elif msg_code == codes.WAIT:
+                self.receive_wait_for_next_round()
+
+            elif msg_code == codes.FINAL_TABLE:
+                self.receive_final_screen(msg_text)
 
     def receive_pixel(self, response: str):
         """Namaluje pixel na obrazovku
@@ -183,11 +196,12 @@ class Client:
         self.application.word = response
 
     def receive_quess_response(self, response: str):
-        if response == codes.ERR:
+        if response != codes.ERR:
             self.application.draw_quess_response('Správně')
+            self.receive_get_points(response)
         else:
             self.application.draw_quess_response('Špatně')
-            self.receive_get_points(response)
+            
 
     def receive_create_game_response(self, response: str):
         """Zjistí zda se povedla založit hra
@@ -280,10 +294,21 @@ class Client:
         Args:
             response (str): přijatá zpráva ze serveru
         """
+
         id = int(response)
         self.id = id
+        
         self.thread_connection = threading.Thread(target=self.application.draw_connection, args=())
         self.thread_connection.start()
+        
+        if self.thread_final_screen != None and self.thread_final_screen.is_alive():
+            self.run_final_screen = False
+            self.thread_final_screen.join()
+
+        if self.thread_menu != None and self.thread_menu.is_alive():
+            self.run_menu = False
+            self.thread_menu.join()
+        
 
     def send_get_games(self):
         """Zeptá se serveru na aktuální hry do kterých se lze připojit
@@ -379,11 +404,32 @@ class Client:
             self.thread_game.join()
 
     def receive_final_screen(self, msg):
-        self.thread_final_screen = threading.Thread(target=self.application.draw_final_screen, args=(msg))
+        self.winner = msg
+        self.thread_final_screen = threading.Thread(target=self.application.draw_final_screen, args=())
         self.thread_final_screen.start()
 
         if self.run_game == True:
             self.thread_game.join()
         elif self.run_wait == True:
             self.thread_wait.join()
+
+    def go_to_menu(self):
+        self.thread_menu = threading.Thread(target=self.application.draw_menu, args=())
+        self.thread_menu.start()
+
+        if self.thread_game != None and self.thread_game.is_alive():
+            self.run_game = False
+            self.thread_game.join()
+
+        if self.thread_final_screen != None and self.thread_final_screen.is_alive():
+            self.run_final_screen = False
+            self.thread_final_screen.join()
+
+        if self.thread_lobby != None and self.thread_lobby.is_alive():
+            self.run_lobby = False
+            self.thread_lobby.join()
+
+        if self.thread_connection != None and self.thread_connection.is_alive():
+            self.run_connection = False
+            self.thread_connection.join()
     

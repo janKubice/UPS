@@ -15,6 +15,7 @@
 #include<unistd.h> 
 #include<pthread.h>
 #include<ctype.h>
+#include<time.h>
 #define CLIENT_MSG_SIZE 1024
 #define MAX_SERVER_PLAYERS 128
 #define MAX_SERVER_GAMES 64
@@ -39,6 +40,7 @@
 #define CLIENT_START_GAME "13"
 #define CLIENT_NEXT_ROUND "14"
 #define CLIENT_WAIT_TO_START "15"
+#define CLIENT_FINAL_TABLE "16"
 
 #define OK "100"/*  */
 #define ERR "-1"
@@ -57,7 +59,7 @@
 #define MSG_DELIMITER_CHAR ';'
 #define MSG_PARAM_DELIMITER ","
 #define MSG_PARAM_DELIMITER_CHAR ','
-#define NADA "NADA"
+#define NADA " "
 
 //Nadefinovani parametru hry
 
@@ -231,8 +233,9 @@ void client_leave(int player_id){
             (&games[game_id])->players--;
 
             (&players[player_id])->game_id = -1;
-            (&players[player_id])->points = -1;
+            (&players[player_id])->points = 0;
             (&players[player_id])->socket = -1;
+
             memcpy(players[player_id].name, NADA, strlen(NADA));
             break;
         }
@@ -336,7 +339,7 @@ void update_lobby(int game_id){
 /**
  * @brief Zruseni hry, 
  * pokud ji zakladatel sam zrusi a nebo se zakladatel odpoji uplne tak se odpojí zbytek hracu
- * pokud to zrusi nekdo kdo neni admin tak se pouze aktualizuje stav a okna
+ * pokud to zrusi nekdo kdo neni admin tak se pouze aktualizuje stav okna
  * 
  * @param params porametry od uzivatele
  */
@@ -348,7 +351,7 @@ void client_cancel_game(int player_id){
         memcpy(msg, &CLIENT_CANCEL_GAME, strlen(&CLIENT_CANCEL_GAME));
         memcpy(msg + strlen(&CLIENT_CANCEL_GAME), &MSG_DELIMITER, strlen(&MSG_DELIMITER));
         memcpy(msg + strlen(&CLIENT_CANCEL_GAME) + strlen(&MSG_DELIMITER), &OK, strlen(&OK) + 1);
-;
+
         int p;
         for (p = 0; p < MAX_GAME_PLAYERS; p++){
             if (games[game_id].free_space[p] != -1){
@@ -371,13 +374,16 @@ void client_cancel_game(int player_id){
                 break;
             }
         }
-        update_lobby(game_id);
-        char* msg = malloc(strlen(&CLIENT_CANCEL_GAME) + strlen(&MSG_DELIMITER) + strlen(&OK) + 1);
-        memcpy(msg, &CLIENT_CANCEL_GAME, strlen(&CLIENT_CANCEL_GAME));
-        memcpy(msg + strlen(&CLIENT_CANCEL_GAME), &MSG_DELIMITER, strlen(&MSG_DELIMITER));
-        memcpy(msg + strlen(&CLIENT_CANCEL_GAME) + strlen(&MSG_DELIMITER), &OK, strlen(&OK) + 1);
-        send_msg(msg, players[player_id].socket);
-        free(msg);
+        if (games[game_id].game_state == STATE_LOBBY || games[game_id].players == 1){
+            update_lobby(game_id);
+
+            char* msg = malloc(strlen(&CLIENT_CANCEL_GAME) + strlen(&MSG_DELIMITER) + strlen(&OK) + 1);
+            memcpy(msg, &CLIENT_CANCEL_GAME, strlen(&CLIENT_CANCEL_GAME));
+            memcpy(msg + strlen(&CLIENT_CANCEL_GAME), &MSG_DELIMITER, strlen(&MSG_DELIMITER));
+            memcpy(msg + strlen(&CLIENT_CANCEL_GAME) + strlen(&MSG_DELIMITER), &OK, strlen(&OK) + 1);
+            send_msg(msg, players[player_id].socket);
+            free(msg);
+        }
     }
     
 }
@@ -496,11 +502,13 @@ void client_set_pixel(char* params, int player_id, int socket){
 void client_send_quess(int player_id, char* word){
     int game_id = players[player_id].game_id;
 
+    puts("slovooooooooooooo");
+    puts(games[game_id].word);
     if (strcmp(word, games[game_id].word) == 0){
-        (&players[player_id])->points++;
+        players[player_id].points++;
 
         char* points_text[8];
-        sprintf(points_text, "%d", players[player_id].points);
+        sprintf(points_text, "%d", (&players[player_id])->points);
 
         char* msg = malloc(strlen(&CLIENT_SEND_QUESS) + strlen(&MSG_DELIMITER) + strlen(points_text) + 1);
         memcpy(msg, &CLIENT_SEND_QUESS, strlen(&CLIENT_SEND_QUESS));
@@ -508,7 +516,7 @@ void client_send_quess(int player_id, char* word){
         memcpy(msg + strlen(&CLIENT_SEND_QUESS) + strlen(&MSG_DELIMITER), points_text, strlen(points_text) + 1);
         send_msg(msg, players[player_id].socket);
         free(msg);
-
+        sleep(1);
         next_round(game_id);    
     }
     else{
@@ -546,22 +554,21 @@ void client_start_game(int player_id){
  */
 void next_round(int game_id){
     const char* words[WORDS];
-    words[0] = "pampeliška";
+    words[0] = "strom";
     words[1] = "slunce";
     words[2] = "auto";
     words[3] = "morče";
-    words[4] = "ježek";
+    words[4] = "koleje";
     words[5] = "strach";
     words[6] = "vřískot";
-    words[7] = "dům";
+    words[7] = "chata";
     words[8] = "paralelní";
-    words[9] =  "čas";
-
+    words[9] =  "hodinky";
     
-
     int random_word_index = rand() % 10;
     char* word = words[random_word_index];
 
+    memset(&games[game_id].word, 0, sizeof(games[game_id].word));
     (&games[game_id])->game_state = STATE_IN_GAME;
     memcpy(games[game_id].word, word, strlen(word));
 
@@ -569,7 +576,6 @@ void next_round(int game_id){
         client_send_final_table(game_id);
         return;
     }
-
     int player_turn = games[game_id].player_on_turn;
 
     int p;
@@ -582,7 +588,6 @@ void next_round(int game_id){
                 memcpy(msg + strlen(&CLIENT_NEXT_ROUND) + strlen(&MSG_DELIMITER), "1", strlen("1"));
                 memcpy(msg + strlen(&CLIENT_NEXT_ROUND) + strlen(&MSG_DELIMITER) + strlen("1"), &MSG_PARAM_DELIMITER, strlen(&MSG_PARAM_DELIMITER));
                 memcpy(msg + strlen(&CLIENT_NEXT_ROUND) + strlen(&MSG_DELIMITER) + strlen("1") + strlen(&MSG_PARAM_DELIMITER), word, strlen(word) + 1);
-                
                 send_msg(msg, players[games[game_id].free_space[p]].socket);
                 free(msg);
             }
@@ -593,7 +598,6 @@ void next_round(int game_id){
                 memcpy(msg + strlen(&CLIENT_NEXT_ROUND) + strlen(&MSG_DELIMITER), "0", strlen("0"));
                 memcpy(msg + strlen(&CLIENT_NEXT_ROUND) + strlen(&MSG_DELIMITER) + strlen("0"), &MSG_PARAM_DELIMITER, strlen(&MSG_PARAM_DELIMITER));
                 memcpy(msg + strlen(&CLIENT_NEXT_ROUND) + strlen(&MSG_DELIMITER) + strlen("0") + strlen(&MSG_PARAM_DELIMITER), "NADA", strlen("NADA") + 1);
-
                 send_msg(msg, players[games[game_id].free_space[p]].socket);
                 free(msg);
             }
@@ -601,11 +605,69 @@ void next_round(int game_id){
         
     }
     games[game_id].round++;
-    games[game_id].player_on_turn = games[game_id].free_space[1];
+
+    int i;
+    for (i = games[game_id].round; i < MAX_GAME_PLAYERS; i++){
+        if (games[game_id].free_space[i] != -1){
+            games[game_id].player_on_turn = games[game_id].free_space[i];
+            break;
+        }
+    }
 }
 
 void client_send_final_table(int game_id){
+    int player_max_id;
+    int player_max_score = 0;
+    int player_id;
+    for (player_max_id = 0; player_max_id < MAX_GAME_PLAYERS; player_max_id++){
+        if (games[game_id].free_space[player_max_id] != -1){
+            if (games[game_id].players_ingame[player_max_id].points > player_max_score){
+                player_max_score = games[game_id].players_ingame[player_max_id].points;
+            }
+        }
+    }
+    player_id = games[game_id].free_space[player_max_id];
 
+    printf("id: %d\n", player_id);
+    char* name = malloc(strlen((&players[player_id])->name)); //chyba
+    memcpy(name, players[player_id].name, strlen(players[player_id].name));
+
+    char* msg = malloc(strlen(&CLIENT_FINAL_TABLE) + strlen(&MSG_DELIMITER) + strlen(name) + 1);
+    memcpy(msg, &CLIENT_FINAL_TABLE, strlen(&CLIENT_FINAL_TABLE));
+    memcpy(msg + strlen(&CLIENT_FINAL_TABLE), &MSG_DELIMITER, strlen(&MSG_DELIMITER));
+    memcpy(msg + strlen(&CLIENT_FINAL_TABLE) + strlen(&MSG_DELIMITER), name, strlen(name) + 1);
+
+    int player;
+    for (player = 0; player < MAX_GAME_PLAYERS; player++){
+        if (games[game_id].free_space[player] != -1){
+            send_msg(msg, players[games[game_id].free_space[player]].socket);
+        }
+    }
+    free(msg);
+    clean_game(game_id);
+}
+
+void clean_game(int game_id){
+    int p;
+    int player_id;
+    for (p = 0; p < MAX_GAME_PLAYERS; p++){
+        if (games[game_id].free_space[p] != -1){
+            player_id = games[game_id].free_space[p];
+            (&players[player_id])->points = 0;
+            (&players[player_id])->game_id = -1;
+            (&players[player_id])->state = STATE_FREE;
+            (&games[game_id])->free_space[p] = -1;
+        }
+
+        
+    }
+
+    (&games[game_id])->round = 0;
+    (&games[game_id])->game_state = STATE_FREE;
+    (&games[game_id])->player_on_turn = -1;
+    (&games[game_id])->players = 0;
+    memset(&games[game_id].word, 0, sizeof(games[game_id].word));
+    
 }
 
 /**
@@ -657,7 +719,7 @@ void client_reconnect(int socket, player* player){
 }
 
 /**
- * @brief NEVYUZIVA SE
+ * @brief NEKONEC SE NEVYUZIVA 
  * Funkce ktera bezi pro kazdou hru ve vlastim vlakne a odesila cas do konce kola
  * 
  * 
@@ -706,6 +768,13 @@ void* timer(int game_id){
 int main(int argc , char *argv[])
 {
     setvbuf(stdout, NULL, _IONBF, 0);
+    if (argc != 2){
+        printf("Wrong number of params, setting default\n");
+        exit(1);
+    }
+
+    int port_number = atoi(argv[1]);
+    
     //alokace pameti pro struktury
 
     players = calloc(MAX_SERVER_PLAYERS, sizeof(player));
@@ -716,7 +785,7 @@ int main(int argc , char *argv[])
     int p;
     for (p = 0; p < MAX_SERVER_PLAYERS; p++){
         (&players[p])->id = p;
-        (&players[p])->points = -1;
+        (&players[p])->points = 0;
         (&players[p])->socket = -1;
         (&players[p])->game_id = -1;
         (&players[p])->state = STATE_FREE;
@@ -755,7 +824,7 @@ int main(int argc , char *argv[])
      
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = INADDR_ANY;
-    server.sin_port = htons( 10000 );
+    server.sin_port = htons( port_number );
      
     if( bind(socket_desc,(struct sockaddr *)&server , sizeof(server)) < 0)
     {

@@ -1,14 +1,13 @@
-from tokenize import Triple
-import pygame
-from tkinter import *
-import grid
-from grid import colorPallet, textObject
-from grid import pixelArt
-from grid import menu
-from grid import grid
+import os
 import sys
+from tkinter import *
+
+import pygame
+
 import client
-import threading
+import grid
+from grid import colorPallet, grid, pixelArt
+
 
 class Gui:
     """
@@ -49,8 +48,11 @@ class Gui:
         self.client.run_ping = False
         self.client.run_receive = False
 
-        self.client.thread_ping.join()
-        self.client.thread_receive.join()
+        if self.client.run_ping == True:
+            self.client.thread_ping.join()
+        if self.client.run_receive == True:
+            self.client.thread_receive.join()
+        os._exit(0)
 
     def fill(self, spot, grid, color, c):
         if spot.color != c:
@@ -78,7 +80,7 @@ class Gui:
         print(text)
         pass
 
-    def initalize_game(self, cols, rows, showGrid=False):
+    def initalize_game(self, cols, rows, on_turn, showGrid=False):
         """
         Vytvoří obrazovku hry
         """
@@ -97,11 +99,12 @@ class Gui:
         grid = pixelArt(win, int(self.width), int(self.height), cols, rows, showGrid)
         grid.drawGrid()
 
-        pallet = colorPallet(win, 90, 90, 3, 3, True, 10, grid.height + 2)
-        pallet.drawGrid()
+        if on_turn:
+            pallet = colorPallet(win, 90, 90, 3, 3, True, 10, grid.height + 2)
+            pallet.drawGrid()
 
-        colorList = [(0,0,0), (255,255,255), (255,0,0), (0,255,0), (0,0,255), (255,255,0), (255,168,0), (244, 66, 173), (65, 244, 226)]
-        pallet.setColor(colorList)
+            colorList = [(0,0,0), (255,255,255), (255,0,0), (0,255,0), (0,0,255), (255,255,0), (255,168,0), (244, 66, 173), (65, 244, 226)]
+            pallet.setColor(colorList)
 
         pygame.display.update()
 
@@ -150,16 +153,19 @@ class Gui:
         active_name = False
         active_ip = False
         active_port = False
+        self.client.run_menu = True
         while True:
             if self.client.run_menu == False:
                 continue
+
+            if self.client.run_menu_2 == False:
+                break
+
             for ev in pygame.event.get():
             
                 if ev.type == pygame.QUIT:
                     self.client.send_leave()
                     self.close_application()
-                    pygame.quit()
-                    sys.exit()
                     
                 #ověření jestli se klikla myš
                 if ev.type == pygame.MOUSEBUTTONDOWN:
@@ -254,6 +260,7 @@ class Gui:
         """
         print('Vykresluju connection')
         self.client.run_menu = False
+        self.client.run_menu_2 = False
         self.client.run_connection = True
         self.client.run_lobby = False
         self.client.run_game = False
@@ -301,8 +308,6 @@ class Gui:
                 if ev.type == pygame.QUIT:
                     self.client.send_leave()
                     self.close_application()
-                    pygame.quit()
-                    sys.exit()
                     
                 #ověření jestli se klikla myš
                 if ev.type == pygame.MOUSEBUTTONDOWN:
@@ -418,8 +423,6 @@ class Gui:
                 if ev.type == pygame.QUIT:
                     self.client.send_leave()
                     self.close_application()
-                    pygame.quit()
-                    sys.exit()
                     
                 #ověření jestli se klikla myš
                 if ev.type == pygame.MOUSEBUTTONDOWN:
@@ -497,15 +500,13 @@ class Gui:
                 if ev.type == pygame.QUIT:
                     self.client.send_leave()
                     self.close_application()
-                    pygame.quit()
-                    sys.exit()
                 
             win.fill((60,25,60))
             win.blit(text , (self.width/2 - text.get_width()/2,self.height/2))
             pygame.display.update()
 
     
-    def draw_final_screen(self, winner):
+    def draw_final_screen(self):
         self.client.run_menu = False
         self.client.run_connection = False
         self.client.run_lobby = False
@@ -520,7 +521,10 @@ class Gui:
         color_dark = (100,100,100)
         
         text_font = pygame.font.SysFont('Corbel',35)
-        text = text_font.render(f'Winner: {winner}!' , True , color_dark)
+        text = text_font.render(f'Winner: {self.client.winner}!' , True , color_dark)
+        text_continue = text_font.render(f'Press ENTER to continue' , True , color_dark)
+
+        timer = 0
 
         while True:
             if self.client.run_final_screen == False:
@@ -530,11 +534,17 @@ class Gui:
                 if ev.type == pygame.QUIT:
                     self.client.send_leave()
                     self.close_application()
-                    pygame.quit()
-                    sys.exit()
+
+                if ev.type == pygame.KEYDOWN:
+                    if ev.key == pygame.K_RETURN:
+                        self.client.run_final_screen = False
+                        self.client.receive_id(str(self.client.id))
+
+            
                 
             win.fill((60,25,60))
-            win.blit(text , (self.width/2,self.height/2))
+            win.blit(text , (self.width/2 - text.get_width()/2,self.height/2))
+            win.blit(text_continue , (self.width/2 - text_continue.get_width()/2 ,self.height/2 + text_continue.get_height()*1.5))
             pygame.display.update()
 
 
@@ -551,7 +561,7 @@ class Gui:
 
         global pallet
 
-        self.initalize_game(self.cols, self.rows, False)
+        self.initalize_game(self.cols, self.rows, on_turn, False)
         pygame.display.update()
 
         color = (0,0,0) 
@@ -585,12 +595,11 @@ class Gui:
 
             for event in ev:
                 if event.type == pygame.QUIT:
-                    self.client.send_leave()
-                    self.close_application()
-                    window = Tk()
-                    window.withdraw()
-                    
                     run = False
+                    #self.client.send_leave()
+                    self.client.send_cancel_lobby()
+                    self.close_application()
+                    
                 
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_RETURN:
